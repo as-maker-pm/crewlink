@@ -1990,6 +1990,18 @@ const NotFound = ({ goHome }) => (
 /* ---------- TECH AVAILABILITY ---------- */
 const DAYS_OF_WEEK = ['mon','tue','wed','thu','fri','sat','sun'];
 const DAY_LABEL = {mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'};
+const TIME_OPTS = (() => {
+  const opts = [];
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 30]) {
+      const val   = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      const h12   = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      const label = `${h12}:${String(m).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`;
+      opts.push({ val, label });
+    }
+  }
+  return opts;
+})();
 
 const BlockTimeModal = ({ onClose, onSave }) => {
   const [date,   setDate]   = useState('');
@@ -2020,12 +2032,16 @@ const BlockTimeModal = ({ onClose, onSave }) => {
             <div style={{display:'grid',gridTemplateColumns:'1fr 20px 1fr',alignItems:'end',gap:8}}>
               <div className="field">
                 <label>Start</label>
-                <input type="time" className="input" value={start} onChange={e=>setStart(e.target.value)}/>
+                <select className="input" value={start} onChange={e=>setStart(e.target.value)} style={{padding:'7px 10px',fontSize:13}}>
+                  {TIME_OPTS.map(o=><option key={o.val} value={o.val}>{o.label}</option>)}
+                </select>
               </div>
               <span style={{textAlign:'center',color:'var(--muted-foreground)',paddingBottom:10}}>—</span>
               <div className="field">
                 <label>End</label>
-                <input type="time" className="input" value={end} onChange={e=>setEnd(e.target.value)}/>
+                <select className="input" value={end} onChange={e=>setEnd(e.target.value)} style={{padding:'7px 10px',fontSize:13}}>
+                  {TIME_OPTS.map(o=><option key={o.val} value={o.val}>{o.label}</option>)}
+                </select>
               </div>
             </div>
           )}
@@ -2081,21 +2097,26 @@ const TechAvailability = () => {
   const save = () => { setSaved(true); setTimeout(()=>setSaved(false),2000); };
 
   const fmt12 = t => {
+    if (!t) return '';
     const [h,m] = t.split(':').map(Number);
-    const suffix = h < 12 ? 'AM' : 'PM';
     const h12 = h === 0 ? 12 : h > 12 ? h-12 : h;
-    return `${h12}:${String(m).padStart(2,'0')} ${suffix}`;
+    return `${h12}:${String(m).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`;
   };
   const fmtDate = d => new Date(d+'T12:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+
+  const TimeSelect = ({value, onChange}) => (
+    <select className="input" value={value} onChange={e=>onChange(e.target.value)}
+      style={{padding:'7px 10px',fontSize:13,cursor:'pointer',minWidth:120}}>
+      {TIME_OPTS.map(o=><option key={o.val} value={o.val}>{o.label}</option>)}
+    </select>
+  );
 
   return (
     <div>
       <PageHead title="My Availability" sub="Set your working hours and block off personal time"
         right={
           <button className="btn btn-primary" onClick={save} style={{minWidth:140,justifyContent:'center'}}>
-            {saved
-              ? <><Icon name="check" size={14}/>Saved!</>
-              : <><Icon name="check" size={14}/>Save changes</>}
+            {saved ? <><Icon name="check" size={14}/>Saved!</> : <><Icon name="check" size={14}/>Save changes</>}
           </button>
         }
       />
@@ -2104,42 +2125,50 @@ const TechAvailability = () => {
 
         {/* ── Left: Weekly schedule ── */}
         <div className="card" style={{padding:0,overflow:'hidden'}}>
-          <div style={{padding:'16px 20px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <div>
-              <h3 style={{fontSize:15,fontWeight:700}}>Weekly Hours</h3>
-              <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>Your recurring availability each week</div>
-            </div>
-            <Icon name="calendar" size={16} color="var(--muted-foreground)"/>
+          <div style={{padding:'16px 20px',borderBottom:'1px solid var(--border)'}}>
+            <h3 style={{fontSize:15,fontWeight:700}}>Weekly Hours</h3>
+            <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>Set which days and hours you're available for bookings</div>
           </div>
+
           {DAYS_OF_WEEK.map(day => {
             const d = schedule[day];
             return (
-              <div key={day} style={{display:'flex',alignItems:'flex-start',gap:14,padding:'14px 20px',
-                borderBottom:'1px solid var(--border)',
-                background:d.enabled?'transparent':'var(--muted)'}}>
-                <div style={{display:'flex',alignItems:'center',gap:10,width:140,paddingTop:2,flexShrink:0}}>
+              <div key={day} style={{borderBottom:'1px solid var(--border)',
+                background: d.enabled ? 'transparent' : 'var(--muted)'}}>
+
+                {/* Day header row */}
+                <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 20px'}}>
                   <Toggle on={d.enabled} onChange={()=>toggleDay(day)}/>
-                  <span style={{fontSize:13,fontWeight:600,color:d.enabled?'var(--foreground)':'var(--muted-foreground)'}}>{DAY_LABEL[day]}</span>
+                  <span style={{fontSize:13,fontWeight:700,flex:1,
+                    color: d.enabled ? 'var(--foreground)' : 'var(--muted-foreground)'}}>
+                    {DAY_LABEL[day]}
+                  </span>
+                  {!d.enabled && <span style={{fontSize:12,color:'var(--muted-foreground)'}}>Unavailable</span>}
                 </div>
-                {d.enabled ? (
-                  <div style={{flex:1,display:'flex',flexDirection:'column',gap:8}}>
+
+                {/* Time slots — only when day is enabled */}
+                {d.enabled && (
+                  <div style={{padding:'0 20px 14px 62px',display:'flex',flexDirection:'column',gap:8}}>
                     {d.slots.map((sl,i) => (
-                      <div key={i} style={{display:'flex',alignItems:'center',gap:8}}>
-                        <input type="time" className="input" style={{width:112,padding:'6px 8px',fontSize:13}} value={sl.start} onChange={e=>updateSlot(day,i,'start',e.target.value)}/>
-                        <span style={{color:'var(--muted-foreground)',fontSize:13,flexShrink:0}}>—</span>
-                        <input type="time" className="input" style={{width:112,padding:'6px 8px',fontSize:13}} value={sl.end} onChange={e=>updateSlot(day,i,'end',e.target.value)}/>
-                        <button className="icon-btn" style={{width:28,height:28,flexShrink:0,color:'var(--muted-foreground)'}} onClick={()=>removeSlot(day,i)}>
-                          <Icon name="trash" size={13}/>
-                        </button>
+                      <div key={i} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                        <TimeSelect value={sl.start} onChange={v=>updateSlot(day,i,'start',v)}/>
+                        <span style={{color:'var(--muted-foreground)',fontSize:13,fontWeight:500}}>to</span>
+                        <TimeSelect value={sl.end}   onChange={v=>updateSlot(day,i,'end',v)}/>
+                        {d.slots.length > 1 && (
+                          <button className="icon-btn" style={{width:30,height:30,color:'var(--muted-foreground)'}}
+                            onClick={()=>removeSlot(day,i)}>
+                            <Icon name="trash" size={13}/>
+                          </button>
+                        )}
                       </div>
                     ))}
-                    <button style={{background:'none',border:'none',padding:0,color:'var(--primary)',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}
-                      onClick={()=>addSlot(day)}>
-                      <Icon name="plus" size={13}/>Add hours
+                    <button onClick={()=>addSlot(day)}
+                      style={{alignSelf:'flex-start',background:'none',border:'1px dashed var(--border)',
+                        borderRadius:8,padding:'5px 12px',fontSize:12,fontWeight:600,
+                        color:'var(--primary)',cursor:'pointer',display:'flex',alignItems:'center',gap:5,marginTop:2}}>
+                      <Icon name="plus" size={12}/>Add time range
                     </button>
                   </div>
-                ) : (
-                  <span style={{fontSize:13,color:'var(--muted-foreground)',paddingTop:2}}>Unavailable</span>
                 )}
               </div>
             );
@@ -2151,12 +2180,12 @@ const TechAvailability = () => {
 
           {/* Timezone */}
           <div className="card" style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:14}}>
-            <div style={{width:36,height:36,borderRadius:8,background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-              <Icon name="clock" size={16} color="var(--primary)"/>
+            <div style={{width:36,height:36,borderRadius:8,background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'var(--primary)'}}>
+              <Icon name="clock" size={16}/>
             </div>
             <div style={{flex:1}}>
               <div style={{fontSize:13,fontWeight:600}}>America / New_York</div>
-              <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:1}}>Times shown in your local timezone</div>
+              <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:1}}>All times shown in your local timezone</div>
             </div>
             <button className="btn btn-outline btn-sm">Change</button>
           </div>
@@ -2166,17 +2195,20 @@ const TechAvailability = () => {
             <div style={{padding:'16px 20px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <div>
                 <h3 style={{fontSize:15,fontWeight:700}}>Blocked Times</h3>
-                <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>Specific times you're unavailable</div>
+                <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>One-off times you're unavailable</div>
               </div>
               <button className="btn btn-primary btn-sm" onClick={()=>setShowModal(true)}>
                 <Icon name="plus" size={13}/>Block time
               </button>
             </div>
             {blocks.length === 0
-              ? <div style={{padding:'28px 20px',textAlign:'center',color:'var(--muted-foreground)',fontSize:13}}>No blocked times — you're fully available during working hours.</div>
+              ? <div style={{padding:'28px 20px',textAlign:'center',color:'var(--muted-foreground)',fontSize:13}}>
+                  No blocked times — you're available during all scheduled hours.
+                </div>
               : [...blocks].sort((a,b)=>a.date.localeCompare(b.date)).map(bl => (
                 <div key={bl.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 20px',borderBottom:'1px solid var(--border)'}}>
-                  <div style={{width:36,height:36,borderRadius:8,background:'rgba(239,68,68,0.08)',color:'var(--destructive)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <div style={{width:36,height:36,borderRadius:8,background:'rgba(239,68,68,0.08)',
+                    color:'var(--destructive)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                     <Icon name="x" size={15}/>
                   </div>
                   <div style={{flex:1,minWidth:0}}>
@@ -2186,7 +2218,8 @@ const TechAvailability = () => {
                       {bl.reason && <span> · {bl.reason}</span>}
                     </div>
                   </div>
-                  <button className="icon-btn" style={{width:28,height:28,flexShrink:0,color:'var(--muted-foreground)'}} onClick={()=>rmBlock(bl.id)}>
+                  <button className="icon-btn" style={{width:28,height:28,flexShrink:0,color:'var(--muted-foreground)'}}
+                    onClick={()=>rmBlock(bl.id)}>
                     <Icon name="trash" size={13}/>
                   </button>
                 </div>
@@ -2201,7 +2234,8 @@ const TechAvailability = () => {
               <span className="badge badge-pri">250 mi</span>
             </div>
             <div style={{fontSize:12,color:'var(--muted-foreground)',marginBottom:12}}>Max distance you'll travel for a job</div>
-            <input type="range" min={25} max={500} step={25} defaultValue={250} style={{width:'100%',accentColor:'var(--primary)'}}/>
+            <input type="range" min={25} max={500} step={25} defaultValue={250}
+              style={{width:'100%',accentColor:'var(--primary)'}}/>
             <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--muted-foreground)',marginTop:4}}>
               <span>25 mi</span><span>500 mi</span>
             </div>
