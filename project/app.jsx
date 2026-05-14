@@ -1098,7 +1098,11 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
             </div>
           </div>
           <div style={{textAlign:'right',flexShrink:0,display:'flex',flexDirection:'column',justifyContent:'space-between',alignItems:'flex-end'}}>
-            <span style={{fontSize:12,fontWeight:700,color:'var(--muted-foreground)',letterSpacing:'.04em'}}>{req.id}</span>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
+                color:'var(--muted-foreground)',marginBottom:3}}>Booking ID</div>
+              <span style={{fontSize:12,fontWeight:700,color:'var(--muted-foreground)',letterSpacing:'.04em'}}>{req.id}</span>
+            </div>
             <div style={{marginTop:32}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
                 color:'var(--muted-foreground)',marginBottom:4}}>Scheduled for</div>
