@@ -204,6 +204,37 @@ const SEED_COMMENTS = {
   ],
 };
 
+const SEED_COMPANY_THREADS = {
+  'c1': [
+    {
+      id:'cc1', author:{name:'Olivia Stewart',initials:'OS',roleKey:'cpm'},
+      text:'Team brief for next week: all Tuesday slots are confirmed. @Carlos Mendez please update the dispatch board before EOD.',
+      ts:'Oct 13, 09:00 AM', edited:false,
+      replies:[
+        { id:'ccr1', author:{name:'Carlos Mendez',initials:'CM',roleKey:'cpm'}, text:'Updated. 14 bookings queued for Tuesday. @Aisha Brown can you cover the morning routes (8–12)?', ts:'Oct 13, 09:45 AM', edited:false },
+        { id:'ccr2', author:{name:'Aisha Brown',initials:'AB',roleKey:'cpm'}, text:"On it — I've got 6 slots from 8 AM to noon, all confirmed.", ts:'Oct 13, 10:02 AM', edited:false },
+      ]
+    },
+    {
+      id:'cc2', author:{name:'Jamie Reyes',initials:'JR',roleKey:'admin'},
+      text:'@Olivia Stewart we need updated headcount for the Q4 dispatch review by Friday. Can you pull that report?',
+      ts:'Oct 14, 02:30 PM', edited:false, replies:[
+        { id:'ccr3', author:{name:'Olivia Stewart',initials:'OS',roleKey:'cpm'}, text:"Will have it to you by Thursday. @Tyler Quinn can you pull the October completion stats?", ts:'Oct 14, 03:05 PM', edited:false },
+      ]
+    },
+  ],
+  'c2': [
+    {
+      id:'cc3', author:{name:'Jamie Reyes',initials:'JR',roleKey:'admin'},
+      text:'Austin Roof Partners onboarding is complete. First set of bookings goes live Monday. @Sam Whitfield please confirm your team is briefed.',
+      ts:'Oct 10, 11:00 AM', edited:false, replies:[]
+    },
+  ],
+  'c3': [],
+  'c4': [],
+  'c5': [],
+};
+
 const BOOKINGS_BY_DATE = (() => {
   const map = {};
   REQUESTS.forEach(r => {
@@ -1016,8 +1047,256 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
   );
 };
 
+/* ---------- Company Threads Panel ---------- */
+const CompanyThreadsPanel = ({ role, onClose }) => {
+  const [activeCompany, setActiveCompany] = useState(CLIENTS[0].id);
+  const company = CLIENTS.find(c => c.id === activeCompany);
+  const companyThreadKey = 'company_' + activeCompany;
+
+  // per-company taggable users: admins + dispatchers for this company
+  const companyUsers = [
+    { name:'Alex Kowalski', initials:'AK', roleKey:'super_admin', roleLabel:'Super Admin' },
+    { name:'Jamie Reyes',   initials:'JR', roleKey:'admin',       roleLabel:'Admin' },
+    { name:'Sam Whitfield', initials:'SW', roleKey:'cpm',         roleLabel:'Dispatcher' },
+    ...CPMS.filter(c => c.clientId === activeCompany).map(c => ({
+      name: c.name,
+      initials: c.name.split(' ').map(n=>n[0]).join(''),
+      roleKey: 'cpm',
+      roleLabel: c.role,
+    })),
+  ].filter((u,i,arr) => arr.findIndex(x=>x.name===u.name)===i);
+
+  // seed the company thread from SEED_COMPANY_THREADS keyed by clientId
+  const seedRef = React.useRef({});
+  if (!seedRef.current[activeCompany]) {
+    seedRef.current[activeCompany] = (SEED_COMPANY_THREADS[activeCompany] || []).map(c=>({...c,replies:[...c.replies]}));
+  }
+
+  return (
+    <div style={{width:360,flexShrink:0,display:'flex',flexDirection:'column',border:'1px solid var(--border)',
+      borderRadius:12,background:'var(--card)',overflow:'hidden',alignSelf:'flex-start',
+      position:'sticky',top:0,maxHeight:'calc(100vh - 120px)'}}>
+      {/* Panel header */}
+      <div style={{padding:'12px 16px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+        <Icon name="message" size={15}/>
+        <span style={{fontWeight:700,fontSize:13,flex:1}}>Company Discussions</span>
+        <button className="icon-btn" style={{width:24,height:24}} onClick={onClose}><Icon name="x" size={13}/></button>
+      </div>
+
+      {/* Company tabs */}
+      <div style={{padding:'8px 12px',borderBottom:'1px solid var(--border)',flexShrink:0,overflowX:'auto'}}>
+        <div style={{display:'flex',gap:6,minWidth:'max-content'}}>
+          {CLIENTS.map(c => {
+            const threadCount = (SEED_COMPANY_THREADS[c.id]||[]).reduce((a,t)=>a+1+t.replies.length,0);
+            return (
+              <button key={c.id} onClick={()=>setActiveCompany(c.id)}
+                style={{padding:'4px 10px',borderRadius:6,border:'1px solid',fontSize:11,fontWeight:600,cursor:'pointer',
+                  whiteSpace:'nowrap',background:activeCompany===c.id?'var(--primary)':'transparent',
+                  color:activeCompany===c.id?'#fff':'var(--muted-foreground)',
+                  borderColor:activeCompany===c.id?'var(--primary)':'var(--border)'}}>
+                {c.name.split(' ').slice(0,2).join(' ')}
+                {threadCount > 0 && <span style={{marginLeft:5,fontSize:9,opacity:.8}}>({threadCount})</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Company info strip */}
+      <div style={{padding:'8px 14px',background:'var(--muted)',borderBottom:'1px solid var(--border)',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{fontWeight:600,fontSize:12}}>{company.name}</div>
+          <span style={{fontSize:10,color:'var(--muted-foreground)'}}>·</span>
+          <span style={{fontSize:11,color:'var(--muted-foreground)'}}>{company.activeJobs} active jobs</span>
+          <span style={{marginLeft:'auto',fontSize:10,padding:'2px 6px',background:company.tier==='Gold'?'rgba(234,179,8,.15)':company.tier==='Silver'?'rgba(156,163,175,.2)':'rgba(180,120,60,.15)',
+            color:company.tier==='Gold'?'#a16207':company.tier==='Silver'?'#6b7280':'#92400e',borderRadius:5,fontWeight:700}}>
+            {company.tier}
+          </span>
+        </div>
+        <div style={{fontSize:10,color:'var(--muted-foreground)',marginTop:2}}>
+          {CPMS.filter(c=>c.clientId===activeCompany).map(c=>c.name).join(' · ') || 'No dispatchers assigned'}
+        </div>
+      </div>
+
+      {/* Thread — scrollable */}
+      <div style={{flex:1,overflowY:'auto',padding:'14px 14px 0'}}>
+        <CompanyThread companyId={activeCompany} role={role} users={companyUsers}/>
+      </div>
+    </div>
+  );
+};
+
+/* Isolated thread per company so state doesn't reset on tab switch */
+const CompanyThread = ({ companyId, role, users }) => {
+  const [comments, setComments]         = useState(() => (SEED_COMPANY_THREADS[companyId]||[]).map(c=>({...c,replies:[...c.replies]})));
+  const [newText, setNewText]           = useState('');
+  const [replyingTo, setReplyingTo]     = useState(null);
+  const [replyText, setReplyText]       = useState('');
+  const [editingId, setEditingId]       = useState(null);
+  const [editText, setEditText]         = useState('');
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionFor, setMentionFor]     = useState(null);
+  const [showMentions, setShowMentions] = useState(false);
+
+  const me = { name:role.user, initials:role.initials, roleKey:role.key };
+  const nowTs = () => new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+
+  const detectMention = (text, field) => {
+    const atIdx = text.lastIndexOf('@');
+    if (atIdx >= 0 && (atIdx === 0 || text[atIdx-1] === ' ')) {
+      const q = text.slice(atIdx + 1);
+      if (/^[a-z ]*$/i.test(q)) { setMentionQuery(q); setMentionFor(field); setShowMentions(true); return; }
+    }
+    setShowMentions(false);
+  };
+
+  const mentionMatches = users.filter(u => u.name !== me.name && u.name.toLowerCase().includes(mentionQuery.toLowerCase()));
+
+  const insertMention = (name) => {
+    const inject = (text, setter) => { const i=text.lastIndexOf('@'); setter(text.slice(0,i)+'@'+name+' '); };
+    if (mentionFor==='new')          inject(newText, setNewText);
+    else if (mentionFor==='reply')   inject(replyText, setReplyText);
+    else if (mentionFor===editingId) inject(editText, setEditText);
+    setShowMentions(false);
+  };
+
+  const renderText = (text) =>
+    text.split(/(@[A-Za-z]+ [A-Za-z]+)/g).map((p,i) =>
+      p.startsWith('@')
+        ? <span key={i} style={{color:'var(--primary)',fontWeight:600,background:'var(--accent)',borderRadius:4,padding:'0 3px'}}>{p}</span>
+        : p
+    );
+
+  const addComment = () => { if(!newText.trim())return; setComments(cs=>[...cs,{id:'c'+Date.now(),author:me,text:newText.trim(),ts:nowTs(),edited:false,replies:[]}]); setNewText(''); setShowMentions(false); };
+  const addReply = (pid) => { if(!replyText.trim())return; setComments(cs=>cs.map(c=>c.id===pid?{...c,replies:[...c.replies,{id:'r'+Date.now(),author:me,text:replyText.trim(),ts:nowTs(),edited:false}]}:c)); setReplyText(''); setReplyingTo(null); setShowMentions(false); };
+  const saveEdit = (isCmt, pid) => { if(!editText.trim())return; if(isCmt) setComments(cs=>cs.map(c=>c.id===editingId?{...c,text:editText.trim(),edited:true}:c)); else setComments(cs=>cs.map(c=>c.id===pid?{...c,replies:c.replies.map(r=>r.id===editingId?{...r,text:editText.trim(),edited:true}:r)}:c)); setEditingId(null); setShowMentions(false); };
+  const deleteComment = (cid) => setComments(cs=>cs.filter(c=>c.id!==cid));
+  const deleteReply = (cid,rid) => setComments(cs=>cs.map(c=>c.id===cid?{...c,replies:c.replies.filter(r=>r.id!==rid)}:c));
+  const startEdit = (id,text) => { setEditingId(id); setEditText(text); setShowMentions(false); };
+
+  const Av = ({a,sz=28}) => (
+    <div style={{width:sz,height:sz,borderRadius:'50%',background:'var(--muted)',border:'1px solid var(--border)',
+      display:'flex',alignItems:'center',justifyContent:'center',fontSize:sz<26?9:10,fontWeight:700,flexShrink:0}}>
+      {a.initials}
+    </div>
+  );
+  const Btn = ({label,onClick,danger=false}) => (
+    <button onClick={onClick} style={{background:'none',border:'none',fontSize:10,fontWeight:600,color:'var(--muted-foreground)',cursor:'pointer',padding:0}}
+      onMouseEnter={e=>e.currentTarget.style.color=danger?'var(--destructive)':'var(--foreground)'}
+      onMouseLeave={e=>e.currentTarget.style.color='var(--muted-foreground)'}>{label}</button>
+  );
+
+  const MentionDrop = ({field}) => (showMentions && mentionFor===field && mentionMatches.length>0) ? (
+    <div style={{position:'absolute',zIndex:60,top:'calc(100% + 4px)',left:0,minWidth:200,background:'var(--card)',
+      border:'1px solid var(--border)',borderRadius:8,boxShadow:'0 8px 24px rgba(0,0,0,.12)',overflow:'hidden'}}>
+      {mentionMatches.map(u=>(
+        <div key={u.name} onMouseDown={e=>{e.preventDefault();insertMention(u.name);}}
+          style={{padding:'7px 10px',display:'flex',alignItems:'center',gap:8,cursor:'pointer'}}
+          onMouseEnter={e=>e.currentTarget.style.background='var(--accent)'}
+          onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+          <div style={{width:22,height:22,borderRadius:'50%',background:'var(--muted)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,flexShrink:0}}>{u.initials}</div>
+          <div><div style={{fontSize:11,fontWeight:600}}>{u.name}</div><div style={{fontSize:9,color:'var(--muted-foreground)'}}>{u.roleLabel}</div></div>
+        </div>
+      ))}
+    </div>
+  ) : null;
+
+  const Input = ({value,onChange,onSubmit,onCancel,field,placeholder,submitLabel='Post'}) => (
+    <div style={{position:'relative'}}>
+      <textarea value={value} onChange={e=>{onChange(e.target.value);detectMention(e.target.value,field);}}
+        onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();onSubmit();}if(e.key==='Escape'&&onCancel)onCancel();}}
+        onBlur={()=>setTimeout(()=>setShowMentions(false),150)}
+        placeholder={placeholder||'Comment… @ to mention'}
+        rows={2}
+        style={{width:'100%',border:'1px solid var(--border)',borderRadius:7,padding:'7px 9px',fontSize:12,
+          resize:'none',outline:'none',background:'var(--card)',color:'var(--foreground)',
+          fontFamily:'inherit',lineHeight:1.5,boxSizing:'border-box'}}
+        onFocus={e=>e.target.style.borderColor='var(--primary)'}
+      />
+      <MentionDrop field={field}/>
+      <div style={{display:'flex',justifyContent:'flex-end',gap:5,marginTop:4}}>
+        {onCancel && <button className="btn btn-outline btn-sm" style={{fontSize:10,padding:'2px 8px'}} onClick={onCancel}>Cancel</button>}
+        <button className="btn btn-primary btn-sm" style={{fontSize:10,padding:'2px 8px'}} onClick={onSubmit} disabled={!value.trim()}>{submitLabel}</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{paddingBottom:16}}>
+      {/* New comment input */}
+      <div style={{display:'flex',gap:8,marginBottom:18}}>
+        <Av a={me}/>
+        <div style={{flex:1}}><Input value={newText} onChange={setNewText} onSubmit={addComment} field="new"/></div>
+      </div>
+
+      {comments.length === 0
+        ? <div style={{textAlign:'center',padding:'16px 0',fontSize:12,color:'var(--muted-foreground)'}}>No messages yet — start the thread.</div>
+        : <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            {comments.map(c=>(
+              <div key={c.id}>
+                <div style={{display:'flex',gap:8}}>
+                  <Av a={c.author}/>
+                  <div style={{flex:1}}>
+                    <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:3}}>
+                      <span style={{fontWeight:700,fontSize:12}}>{c.author.name}</span>
+                      <span style={{fontSize:10,color:'var(--muted-foreground)'}}>{c.ts}</span>
+                      {c.edited&&<span style={{fontSize:9,color:'var(--muted-foreground)',fontStyle:'italic'}}>(edited)</span>}
+                    </div>
+                    {editingId===c.id
+                      ? <Input value={editText} onChange={setEditText} field={c.id} onSubmit={()=>saveEdit(true)} onCancel={()=>setEditingId(null)} submitLabel="Save"/>
+                      : <div style={{fontSize:12,lineHeight:1.6}}>{renderText(c.text)}</div>
+                    }
+                    {editingId!==c.id&&(
+                      <div style={{display:'flex',gap:8,marginTop:4}}>
+                        <Btn label="Reply" onClick={()=>setReplyingTo(replyingTo===c.id?null:c.id)}/>
+                        {c.author.name===me.name&&<><Btn label="Edit" onClick={()=>startEdit(c.id,c.text)}/><Btn label="Delete" onClick={()=>deleteComment(c.id)} danger/></>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {c.replies.length>0&&(
+                  <div style={{marginLeft:36,paddingLeft:12,borderLeft:'2px solid var(--border)',marginTop:8,display:'flex',flexDirection:'column',gap:10}}>
+                    {c.replies.map(r=>(
+                      <div key={r.id} style={{display:'flex',gap:7}}>
+                        <Av a={r.author} sz={22}/>
+                        <div style={{flex:1}}>
+                          <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2}}>
+                            <span style={{fontWeight:700,fontSize:11}}>{r.author.name}</span>
+                            <span style={{fontSize:9,color:'var(--muted-foreground)'}}>{r.ts}</span>
+                            {r.edited&&<span style={{fontSize:9,color:'var(--muted-foreground)',fontStyle:'italic'}}>(edited)</span>}
+                          </div>
+                          {editingId===r.id
+                            ? <Input value={editText} onChange={setEditText} field={r.id} onSubmit={()=>saveEdit(false,c.id)} onCancel={()=>setEditingId(null)} submitLabel="Save"/>
+                            : <div style={{fontSize:12,lineHeight:1.55}}>{renderText(r.text)}</div>
+                          }
+                          {editingId!==r.id&&r.author.name===me.name&&(
+                            <div style={{display:'flex',gap:8,marginTop:3}}>
+                              <Btn label="Edit" onClick={()=>startEdit(r.id,r.text)}/><Btn label="Delete" onClick={()=>deleteReply(c.id,r.id)} danger/>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {replyingTo===c.id&&(
+                  <div style={{marginLeft:36,paddingLeft:12,borderLeft:'2px solid var(--border)',marginTop:8,display:'flex',gap:7}}>
+                    <Av a={me} sz={22}/>
+                    <div style={{flex:1}}><Input value={replyText} onChange={setReplyText} field="reply" onSubmit={()=>addReply(c.id)} onCancel={()=>setReplyingTo(null)} placeholder="Reply… @ to mention" submitLabel="Reply"/></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+      }
+    </div>
+  );
+};
+
 /* ---------- REQUESTS ---------- */
-const RequestsList = ({ openDetail, openAdd }) => {
+const RequestsList = ({ openDetail, openAdd, role }) => {
   const [filter, setFilter]           = useState('All');
   const [sort, setSort]               = useState('date');
   const [query, setQuery]             = useState('');
@@ -1025,6 +1304,9 @@ const RequestsList = ({ openDetail, openAdd }) => {
   const [filterService, setFilterService]       = useState('All');
   const [filterTech, setFilterTech]             = useState('All');
   const [filterDispatcher, setFilterDispatcher] = useState('All');
+  const [showDiscussions, setShowDiscussions]   = useState(false);
+
+  const canDiscuss = role && role.key !== 'tech';
 
   const fmt12 = t => { const [h,m]=t.split(':').map(Number); const h12=h===0?12:h>12?h-12:h; return `${h12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`; };
 
@@ -1046,15 +1328,10 @@ const RequestsList = ({ openDetail, openAdd }) => {
   const techNames = [...new Set(TECHS.map(t=>t.name))];
   const dispNames = [...new Set(CPMS.map(c=>c.name))];
 
-  return (
-    <div>
-      <PageHead title="Survey Requests" sub={`${filtered.length} of ${REQUESTS.length} requests`}
-        right={<>
-          <button className="btn btn-outline"><Icon name="download" size={14}/>Export</button>
-          <button className="btn btn-primary" onClick={openAdd}><Icon name="plus" size={14}/>New Request</button>
-        </>}
-      />
+  const totalThreadMsgs = Object.values(SEED_COMPANY_THREADS).reduce((a,arr)=>a+arr.reduce((b,t)=>b+1+t.replies.length,0),0);
 
+  const tableBlock = (
+    <div style={{flex:1,minWidth:0}}>
       <div className="card flat" style={{padding:'10px 14px', marginBottom:14, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
         <div className="seg">
           {['All',...STATUSES].map(s => <button key={s} className={filter===s?'active':''} onClick={()=>setFilter(s)}>{s}</button>)}
@@ -1146,11 +1423,42 @@ const RequestsList = ({ openDetail, openAdd }) => {
       </div>
     </div>
   );
+
+  return (
+    <div>
+      <PageHead title="Survey Requests" sub={`${filtered.length} of ${REQUESTS.length} requests`}
+        right={<>
+          {canDiscuss && (
+            <button className="btn btn-outline" onClick={()=>setShowDiscussions(d=>!d)}
+              style={{position:'relative',background:showDiscussions?'var(--accent)':'',borderColor:showDiscussions?'var(--primary)':''}}>
+              <Icon name="message" size={14}/>
+              Discussions
+              {totalThreadMsgs > 0 && <span style={{position:'absolute',top:-5,right:-5,width:16,height:16,borderRadius:'50%',
+                background:'var(--primary)',color:'#fff',fontSize:9,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {totalThreadMsgs}
+              </span>}
+            </button>
+          )}
+          <button className="btn btn-outline"><Icon name="download" size={14}/>Export</button>
+          <button className="btn btn-primary" onClick={openAdd}><Icon name="plus" size={14}/>New Request</button>
+        </>}
+      />
+
+      {showDiscussions && canDiscuss
+        ? <div style={{display:'flex',gap:16,alignItems:'flex-start'}}>
+            {tableBlock}
+            <CompanyThreadsPanel role={role} onClose={()=>setShowDiscussions(false)}/>
+          </div>
+        : tableBlock
+      }
+    </div>
+  );
 };
 
 /* ---------- Comments Section ---------- */
-const CommentsSection = ({ reqId, role }) => {
-  const [comments, setComments]         = useState(() => (SEED_COMMENTS[reqId] || []).map(c=>({...c,replies:[...c.replies]})));
+const CommentsSection = ({ reqId, role, participants=[], seedKey }) => {
+  const key = seedKey || reqId;
+  const [comments, setComments]         = useState(() => (SEED_COMMENTS[key] || []).map(c=>({...c,replies:[...c.replies]})));
   const [newText, setNewText]           = useState('');
   const [replyingTo, setReplyingTo]     = useState(null);
   const [replyText, setReplyText]       = useState('');
@@ -1162,6 +1470,12 @@ const CommentsSection = ({ reqId, role }) => {
 
   const me = { name: role.user, initials: role.initials, roleKey: role.key };
 
+  // merge global taggable users with booking-specific participants
+  const allTaggable = [
+    ...TAGGABLE_USERS,
+    ...participants.filter(p => !TAGGABLE_USERS.some(u => u.name === p.name))
+  ];
+
   const detectMention = (text, field) => {
     const atIdx = text.lastIndexOf('@');
     if (atIdx >= 0 && (atIdx === 0 || text[atIdx-1] === ' ')) {
@@ -1171,9 +1485,14 @@ const CommentsSection = ({ reqId, role }) => {
     setShowMentions(false);
   };
 
-  const mentionMatches = TAGGABLE_USERS.filter(u =>
+  const mentionMatches = allTaggable.filter(u =>
     u.name !== me.name && u.name.toLowerCase().includes(mentionQuery.toLowerCase())
   );
+
+  const tagAll = () => {
+    const tags = participants.filter(p => p.name !== me.name).map(p=>'@'+p.name).join(' ');
+    if (tags) setNewText(t => (t ? t+' ' : '') + tags + ' ');
+  };
 
   const insertMention = (userName) => {
     const inject = (text, setter) => {
@@ -1281,7 +1600,15 @@ const CommentsSection = ({ reqId, role }) => {
       />
       <MentionDropdown field={field}/>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:6}}>
-        <span style={{fontSize:10,color:'var(--muted-foreground)'}}>Press Enter to submit · Shift+Enter for new line · @ to mention</span>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:10,color:'var(--muted-foreground)'}}>Enter to submit · Shift+Enter new line · @ to mention</span>
+          {field==='new' && participants.length > 0 && (
+            <button type="button" onMouseDown={e=>{e.preventDefault();tagAll();}}
+              style={{background:'none',border:'none',fontSize:10,fontWeight:600,color:'var(--primary)',cursor:'pointer',padding:0,display:'flex',alignItems:'center',gap:3}}>
+              <Icon name="at" size={11}/>Tag all
+            </button>
+          )}
+        </div>
         <div style={{display:'flex',gap:6}}>
           {onCancel && <button className="btn btn-outline btn-sm" onClick={onCancel}>Cancel</button>}
           <button className="btn btn-primary btn-sm" onClick={onSubmit} disabled={!value.trim()}>{submitLabel}</button>
@@ -1606,7 +1933,12 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast, role }) => {
         </div>
       </div>
 
-      {role && role.key !== 'tech' && <CommentsSection reqId={req.id} role={role}/>}
+      {role && role.key !== 'tech' && (
+        <CommentsSection reqId={req.id} role={role} participants={[
+          ...(req.tech ? [{ name:req.tech.name, initials:req.tech.name.split(' ').map(n=>n[0]).join(''), roleKey:'tech', roleLabel:'Technician' }] : []),
+          ...(req.cpm  ? [{ name:req.cpm.name,  initials:req.cpm.name.split(' ').map(n=>n[0]).join(''),  roleKey:'cpm',  roleLabel:req.cpm.role }] : []),
+        ]}/>
+      )}
 
       {showCancel && (
         <div className="modal-bg" onClick={()=>setShowCancel(false)}>
@@ -2754,7 +3086,7 @@ function App() {
   else if (tenantDetail) content = <TenantDetail tenant={tenantDetail} onClose={()=>setTenantDetail(null)}/>;
   else if (route === 'home') content = <HomeDashboard role={role} go={go}/>;
   else if (route === 'calendar') content = <Calendar role={role} go={go} openDetail={setDetail} onAdd={()=>setShowAdd(true)}/>;
-  else if (route === 'requests' || route === 'my_requests') content = <RequestsList openDetail={setDetail} openAdd={()=>setShowAdd(true)}/>;
+  else if (route === 'requests' || route === 'my_requests') content = <RequestsList openDetail={setDetail} openAdd={()=>setShowAdd(true)} role={role}/>;
   else if (route === 'technicians') content = <TechList openTech={setTechDetail}/>;
   else if (route === 'clients') content = <ClientsList openClient={setClientDetail}/>;
   else if (route === 'tenants') content = <TenantsList openTenant={setTenantDetail}/>;
