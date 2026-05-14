@@ -48,9 +48,6 @@ const Icon = ({ name, size=18 }) => {
     bookmark: <><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></>,
     pin2: <><path d="M12 17v5M9 10.76V6h6v4.76l3 3.24v2H6v-2z"/></>,
     file: <><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></>,
-    message: <><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></>,
-    send: <><path d="M22 2L11 13M22 2L15 22l-4-9-9-4z"/></>,
-    lock: <><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>,
   };
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
@@ -184,36 +181,6 @@ const ROLES = [
   { key:'tech',        label:'Technician',  user:'Marcus Chen',   initials:'MC' },
 ];
 
-const TEAM_MEMBERS = [
-  { id:'tm1', name:'Jamie Reyes',   role:'admin',       initials:'JR', roleLabel:'Admin' },
-  { id:'tm2', name:'Sam Whitfield', role:'cpm',         initials:'SW', roleLabel:'Dispatcher' },
-  { id:'tm3', name:'Marcus Chen',   role:'tech',        initials:'MC', roleLabel:'Technician' },
-  { id:'tm4', name:'Alex Kowalski', role:'super_admin', initials:'AK', roleLabel:'Super Admin' },
-  { id:'tm5', name:'Olivia Stewart',role:'cpm',         initials:'OS', roleLabel:'Lead Dispatcher' },
-  { id:'tm6', name:'Carlos Mendez', role:'cpm',         initials:'CM', roleLabel:'Dispatcher' },
-];
-
-const INIT_COMMENTS = {
-  'SR-1024': [
-    { id:'cm1', authorId:'tm2', text:'Assigned Marcus — he has the equipment and is in the area. Confirmed ETA 10 AM.', ts:'2025-11-08T09:30:00', internal:false, replies:[
-      { id:'cm1r1', authorId:'tm1', text:'@Sam Whitfield Perfect. Please make sure he brings the moisture meter for this one.', ts:'2025-11-08T10:05:00', internal:false },
-      { id:'cm1r2', authorId:'tm2', text:'Done — briefed and on his way.', ts:'2025-11-08T10:22:00', internal:false },
-    ]},
-    { id:'cm2', authorId:'tm1', text:'Internal: homeowner was difficult to schedule. May push back on the slot — call ahead 30 min before.', ts:'2025-11-09T08:00:00', internal:true, replies:[] },
-  ],
-  'SR-1025': [
-    { id:'cm3', authorId:'tm1', text:'Client confirmed gate code 4421. Two-story south-facing roof — extended ladder required.', ts:'2025-11-07T14:00:00', internal:false, replies:[
-      { id:'cm3r1', authorId:'tm2', text:'@Jamie Reyes Got it, will make sure the equipment is in the van the night before.', ts:'2025-11-07T14:45:00', internal:false },
-    ]},
-  ],
-};
-
-const INIT_NOTIFICATIONS = [
-  { id:'n1', type:'mention', reqId:'SR-1024', text:'Sam Whitfield mentioned you in SR-1024 — "Perfect. Please make sure he brings the moisture meter."', ts:'2025-11-08T10:05:00', read:false },
-  { id:'n2', type:'reply',   reqId:'SR-1024', text:'Sam Whitfield replied on SR-1024 — "Done — briefed and on his way."', ts:'2025-11-08T10:22:00', read:false },
-  { id:'n3', type:'mention', reqId:'SR-1025', text:'Jamie Reyes mentioned you in SR-1025 — "extended ladder required."', ts:'2025-11-07T14:45:00', read:true },
-];
-
 const NAV_BY_ROLE = {
   super_admin: ['home','tenants','plans','calendar','settings'],
   admin:       ['home','calendar','requests','technicians','clients','tenant_services','plan_usage','settings'],
@@ -282,7 +249,7 @@ const Sidebar = ({ role, route, setRoute, collapsed, setCollapsed }) => {
 };
 
 /* ---------- Header ---------- */
-const Header = ({ role, setRole, theme, setTheme, onAdd, onSearch, query, onSignOut, setView, notifications, setNotifications, onNotifClick }) => {
+const Header = ({ role, setRole, theme, setTheme, onAdd, onSearch, query, onSignOut, setView }) => {
   const [roleOpen, setRoleOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   return (
@@ -298,7 +265,7 @@ const Header = ({ role, setRole, theme, setTheme, onAdd, onSearch, query, onSign
       <button className="icon-btn" onClick={() => setTheme(theme==='light'?'dark':'light')} title="Toggle theme">
         <Icon name={theme==='light'?'moon':'sun'}/>
       </button>
-      <NotificationBell notifications={notifications} setNotifications={setNotifications} onNotifClick={onNotifClick}/>
+      <button className="icon-btn" title="Notifications"><Icon name="bell"/><span className="hd-dot"/></button>
       <div style={{position:'relative'}}>
         <div className="role-pill" onClick={()=>setRoleOpen(o=>!o)}>
           <span className="role-dot"/>
@@ -549,272 +516,6 @@ const TechHome = ({ go }) => {
           ))}
         </div>
       </div>
-    </div>
-  );
-};
-
-/* ---------- COMMS ---------- */
-const fmtCommentTs = ts => {
-  const d = new Date(ts);
-  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' at ' +
-    d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-};
-
-const renderMentions = text =>
-  text.split(/(@[\w][\w ]*[\w]|@[\w]+)/).map((p,i) =>
-    p.startsWith('@') && TEAM_MEMBERS.some(m => '@'+m.name === p)
-      ? <span key={i} style={{color:'var(--primary)',fontWeight:600,background:'rgba(59,130,246,0.08)',borderRadius:3,padding:'0 2px'}}>{p}</span>
-      : p
-  );
-
-const MentionInput = ({ value, onChange, placeholder, rows=3 }) => {
-  const [showPicker, setShowPicker] = useState(false);
-  const [mentionQ,   setMentionQ]   = useState('');
-  const handleChange = e => {
-    const v = e.target.value;
-    onChange(v);
-    const atIdx = v.lastIndexOf('@');
-    if (atIdx !== -1 && (atIdx === 0 || /\s/.test(v[atIdx-1]))) {
-      const after = v.slice(atIdx+1);
-      if (!after.includes(' ') && after.length < 20) { setMentionQ(after); setShowPicker(true); return; }
-    }
-    setShowPicker(false);
-  };
-  const pick = m => {
-    const atIdx = value.lastIndexOf('@');
-    onChange(value.slice(0, atIdx) + '@' + m.name + ' ');
-    setShowPicker(false);
-  };
-  const filtered = TEAM_MEMBERS.filter(m => m.name.toLowerCase().includes(mentionQ.toLowerCase()));
-  return (
-    <div style={{position:'relative'}}>
-      <textarea rows={rows} className="input" value={value} onChange={handleChange}
-        placeholder={placeholder}
-        style={{width:'100%',resize:'vertical',fontSize:13,lineHeight:1.6,boxSizing:'border-box'}}/>
-      {showPicker && filtered.length > 0 && (
-        <div style={{position:'absolute',bottom:'calc(100% + 4px)',left:0,background:'var(--card)',
-          border:'1px solid var(--border)',borderRadius:8,boxShadow:'0 4px 16px rgba(0,0,0,.12)',
-          zIndex:80,minWidth:220,overflow:'hidden'}}>
-          {filtered.map(m => (
-            <div key={m.id} onMouseDown={e=>{e.preventDefault();pick(m);}}
-              style={{padding:'8px 12px',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
-              onMouseEnter={e=>e.currentTarget.style.background='var(--accent)'}
-              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-              <div className="avatar-sm" style={{width:26,height:26,fontSize:10}}>{m.initials}</div>
-              <div>
-                <div style={{fontSize:12,fontWeight:600}}>{m.name}</div>
-                <div style={{fontSize:10,color:'var(--muted-foreground)'}}>{m.roleLabel}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const CommentBubble = ({ comment, onReply, isReply=false }) => {
-  const [showBox, setShowBox] = useState(false);
-  const [txt,     setTxt]     = useState('');
-  const author = TEAM_MEMBERS.find(m => m.id === comment.authorId) || {name:'Unknown',initials:'?',roleLabel:''};
-  return (
-    <div style={{display:'flex',gap:9,alignItems:'flex-start'}}>
-      <div className="avatar-sm"
-        style={{width:isReply?24:30,height:isReply?24:30,fontSize:isReply?9:11,flexShrink:0,marginTop:2}}>
-        {author.initials}
-      </div>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',marginBottom:4}}>
-          <span style={{fontWeight:700,fontSize:12}}>{author.name}</span>
-          <span style={{fontSize:10,color:'var(--muted-foreground)',background:'var(--accent)',
-            padding:'1px 5px',borderRadius:4}}>{author.roleLabel}</span>
-          {comment.internal && (
-            <span style={{fontSize:9,fontWeight:700,background:'rgba(245,158,11,0.15)',color:'var(--warning)',
-              padding:'1px 5px',borderRadius:4,letterSpacing:'.04em',display:'flex',alignItems:'center',gap:3}}>
-              <Icon name="lock" size={8}/>INTERNAL
-            </span>
-          )}
-          <span style={{fontSize:10,color:'var(--muted-foreground)',marginLeft:'auto'}}>{fmtCommentTs(comment.ts)}</span>
-        </div>
-        <div style={{fontSize:13,lineHeight:1.65,padding:'8px 10px',borderRadius:8,marginBottom:5,
-          background:comment.internal?'rgba(245,158,11,0.06)':'var(--accent)',
-          border:comment.internal?'1px solid rgba(245,158,11,0.2)':'1px solid transparent'}}>
-          {renderMentions(comment.text)}
-        </div>
-        {!isReply && (
-          <button onClick={()=>setShowBox(v=>!v)}
-            style={{background:'none',border:'none',cursor:'pointer',fontSize:11,
-              color:'var(--muted-foreground)',padding:'2px 0',display:'flex',alignItems:'center',gap:4}}>
-            <Icon name="message" size={11}/>
-            {comment.replies?.length > 0
-              ? `${comment.replies.length} repl${comment.replies.length===1?'y':'ies'}`
-              : 'Reply'}
-          </button>
-        )}
-        {!isReply && comment.replies?.length > 0 && (
-          <div style={{marginTop:8,paddingLeft:12,borderLeft:'2px solid var(--border)',
-            display:'flex',flexDirection:'column',gap:10}}>
-            {comment.replies.map(r => <CommentBubble key={r.id} comment={r} isReply/>)}
-          </div>
-        )}
-        {!isReply && showBox && (
-          <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:6}}>
-            <MentionInput value={txt} onChange={setTxt} placeholder="Write a reply… Use @ to mention" rows={2}/>
-            <div style={{display:'flex',justifyContent:'flex-end',gap:6}}>
-              <button className="btn btn-ghost btn-sm" onClick={()=>{setShowBox(false);setTxt('');}}>Cancel</button>
-              <button className="btn btn-primary btn-sm" disabled={!txt.trim()}
-                onClick={()=>{onReply(comment.id,txt);setTxt('');setShowBox(false);}}>
-                Post reply
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const CommentThread = ({ reqId, comments, setComments, setNotifications, role }) => {
-  const [txt,      setTxt]      = useState('');
-  const [internal, setInternal] = useState(false);
-  const thread    = comments[reqId] || [];
-  const myMember  = TEAM_MEMBERS.find(m => m.role === role.key);
-  const visible   = role.key === 'tech' ? thread.filter(c => !c.internal) : thread;
-
-  const postComment = () => {
-    if (!txt.trim()) return;
-    const c = { id:`cm${Date.now()}`, authorId:myMember?.id||'tm1',
-      text:txt.trim(), ts:new Date().toISOString(), internal, replies:[] };
-    setComments(prev => ({...prev, [reqId]: [...(prev[reqId]||[]), c]}));
-    [...txt.matchAll(/@([\w][\w ]*[\w]|[\w]+)/g)].forEach(match => {
-      const nm = match[1];
-      const m  = TEAM_MEMBERS.find(t => t.name === nm);
-      if (m && m.role !== role.key) {
-        setNotifications(prev => [{
-          id:`n${Date.now()}${Math.random()}`, type:'mention', reqId,
-          text:`${myMember?.name||role.user} mentioned you in ${reqId}`,
-          ts:new Date().toISOString(), read:false
-        }, ...prev]);
-      }
-    });
-    setTxt(''); setInternal(false);
-  };
-
-  const postReply = (commentId, replyTxt) => {
-    const r = { id:`cm${Date.now()}`, authorId:myMember?.id||'tm1',
-      text:replyTxt.trim(), ts:new Date().toISOString(), internal:false };
-    setComments(prev => ({...prev, [reqId]: (prev[reqId]||[]).map(c =>
-      c.id===commentId ? {...c, replies:[...c.replies, r]} : c
-    )}));
-  };
-
-  return (
-    <div className="card">
-      <div className="card-h">
-        <h3>Updates</h3>
-        {visible.length > 0 && (
-          <span style={{fontSize:11,background:'var(--accent)',padding:'2px 8px',borderRadius:12,
-            color:'var(--muted-foreground)',fontWeight:600}}>{visible.length}</span>
-        )}
-      </div>
-      {visible.length === 0 && (
-        <div className="muted" style={{textAlign:'center',padding:'20px 0',fontSize:13}}>
-          No updates yet — start the conversation below.
-        </div>
-      )}
-      <div style={{display:'flex',flexDirection:'column',gap:18,marginBottom:visible.length?22:0}}>
-        {visible.map(c => <CommentBubble key={c.id} comment={c} onReply={postReply}/>)}
-      </div>
-      <div style={{borderTop:visible.length?'1px solid var(--border)':'none',
-        paddingTop:visible.length?16:0}}>
-        <MentionInput value={txt} onChange={setTxt}
-          placeholder="Write an update… Use @ to mention a teammate"/>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:10}}>
-          {role.key !== 'tech' ? (
-            <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',
-              fontSize:12,color:'var(--muted-foreground)'}}>
-              <input type="checkbox" checked={internal} onChange={e=>setInternal(e.target.checked)}
-                style={{cursor:'pointer'}}/>
-              <Icon name="lock" size={11}/>Internal note
-            </label>
-          ) : <span/>}
-          <button className="btn btn-primary btn-sm" disabled={!txt.trim()} onClick={postComment}>
-            <Icon name="send" size={13}/>Post update
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const NotificationBell = ({ notifications, setNotifications, onNotifClick }) => {
-  const [open,  setOpen]  = useState(false);
-  const unread = notifications.filter(n => !n.read).length;
-  const fmtTs  = ts => {
-    const d = new Date(ts);
-    return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' +
-      d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-  };
-  const markAllRead = () => setNotifications(prev => prev.map(n => ({...n,read:true})));
-  const handleClick = n => {
-    setNotifications(prev => prev.map(n2 => n2.id===n.id ? {...n2,read:true} : n2));
-    onNotifClick(n);
-    setOpen(false);
-  };
-  return (
-    <div style={{position:'relative'}}>
-      <button className="icon-btn" style={{position:'relative'}} onClick={()=>setOpen(o=>!o)}
-        title="Notifications">
-        <Icon name="bell"/>
-        {unread > 0 && (
-          <span style={{position:'absolute',top:5,right:5,width:8,height:8,borderRadius:'50%',
-            background:'var(--destructive)',border:'2px solid var(--card)',pointerEvents:'none'}}/>
-        )}
-      </button>
-      {open && (
-        <div style={{position:'absolute',top:'calc(100% + 6px)',right:0,background:'var(--card)',
-          border:'1px solid var(--border)',borderRadius:12,boxShadow:'0 8px 32px rgba(0,0,0,.14)',
-          width:340,zIndex:70,overflow:'hidden'}} onClick={e=>e.stopPropagation()}>
-          <div style={{padding:'12px 16px',borderBottom:'1px solid var(--border)',
-            display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <div style={{fontWeight:700,fontSize:14,display:'flex',alignItems:'center',gap:8}}>
-              Notifications
-              {unread > 0 && (
-                <span style={{fontSize:10,fontWeight:700,background:'var(--destructive)',color:'#fff',
-                  padding:'1px 7px',borderRadius:10}}>{unread} new</span>
-              )}
-            </div>
-            {unread > 0 && (
-              <button className="btn btn-ghost btn-sm" onClick={markAllRead}
-                style={{fontSize:11}}>Mark all read</button>
-            )}
-          </div>
-          {notifications.length === 0 && (
-            <div className="muted" style={{padding:'28px',textAlign:'center',fontSize:13}}>
-              All caught up — no notifications.
-            </div>
-          )}
-          <div style={{maxHeight:340,overflowY:'auto'}}>
-            {notifications.map(n => (
-              <div key={n.id} onClick={()=>handleClick(n)}
-                style={{padding:'11px 16px',cursor:'pointer',
-                  background:n.read?'transparent':'var(--accent)',
-                  borderBottom:'1px solid var(--border)',display:'flex',gap:10,alignItems:'flex-start'}}
-                onMouseEnter={e=>e.currentTarget.style.background='var(--accent)'}
-                onMouseLeave={e=>e.currentTarget.style.background=n.read?'transparent':'var(--accent)'}>
-                <div style={{width:7,height:7,borderRadius:'50%',marginTop:5,flexShrink:0,
-                  background:n.read?'var(--border)':'var(--primary)'}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:12,fontWeight:n.read?400:600,lineHeight:1.45,wordBreak:'break-word'}}>
-                    {n.text}
-                  </div>
-                  <div style={{fontSize:10,color:'var(--muted-foreground)',marginTop:3}}>{fmtTs(n.ts)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -1325,7 +1026,7 @@ const RequestsList = ({ openDetail, openAdd, query }) => {
   );
 };
 
-const RequestDetail = ({ req, onClose, onStatusChange, toast, role, comments, setComments, notifications, setNotifications }) => {
+const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
   if (!req) return null;
   const [cancelReason, setCancelReason] = useState(req.cancellationReason || '');
   const [showCancel, setShowCancel] = useState(false);
@@ -1403,9 +1104,6 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast, role, comments, se
               ))}
             </div>
           </div>
-
-          <CommentThread reqId={req.id} comments={comments} setComments={setComments}
-            setNotifications={setNotifications} role={role}/>
 
           <div className="card">
             <div className="card-h"><h3>Photos & files</h3><button className="btn btn-outline btn-sm"><Icon name="upload" size={14}/>Upload</button></div>
@@ -2566,8 +2264,6 @@ function App() {
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState(null);
   const [reqOverrides, setReqOverrides] = useState({});
-  const [comments, setComments] = useState(INIT_COMMENTS);
-  const [notifications, setNotifications] = useState(INIT_NOTIFICATIONS);
 
   useEffect(() => {
     document.body.classList.toggle('dark', theme==='dark');
@@ -2590,17 +2286,12 @@ function App() {
 
   const go = (r) => setRoute(r);
 
-  const onNotifClick = n => {
-    const req = REQUESTS.find(r => r.id === n.reqId);
-    if (req) { setDetail(req); setRoute('requests'); }
-  };
-
   // override status from local edits
   const reqsView = REQUESTS.map(r => reqOverrides[r.id] ? {...r, status: reqOverrides[r.id]} : r);
 
   // page render
   let content = null;
-  if (detail) content = <RequestDetail req={detail} onClose={()=>setDetail(null)} onStatusChange={onStatusChange} toast={showToast} role={role} comments={comments} setComments={setComments} notifications={notifications} setNotifications={setNotifications}/>;
+  if (detail) content = <RequestDetail req={detail} onClose={()=>setDetail(null)} onStatusChange={onStatusChange} toast={showToast}/>;
   else if (cpmDetail) content = <CpmDetail cpm={cpmDetail} onClose={()=>setCpmDetail(null)} toast={showToast} openDetail={setDetail}/>;
   else if (techDetail) content = <TechDetail tech={techDetail} onClose={()=>setTechDetail(null)} openDetail={setDetail}/>;
   else if (clientDetail) content = <ClientDetail client={clientDetail} onClose={()=>setClientDetail(null)} openCpm={p=>{setCpmDetail(p);}}/>;
@@ -2626,7 +2317,7 @@ function App() {
     <div className="app" data-screen-label={NAV_DEFS[route]?.label || 'CrewLink'}>
       <Sidebar role={role} route={route} setRoute={setRoute} collapsed={collapsed} setCollapsed={setCollapsed}/>
       <div style={{display:'flex', flexDirection:'column', minWidth:0, height:'100vh', overflow:'hidden'}}>
-        <Header role={role} setRole={setRole} theme={theme} setTheme={setTheme} onAdd={()=>setShowAdd(true)} onSearch={setQuery} query={query} onSignOut={()=>setView('signin')} setView={setView} notifications={notifications} setNotifications={setNotifications} onNotifClick={onNotifClick}/>
+        <Header role={role} setRole={setRole} theme={theme} setTheme={setTheme} onAdd={()=>setShowAdd(true)} onSearch={setQuery} query={query} onSignOut={()=>setView('signin')} setView={setView}/>
         <main className="main" style={route==='calendar'?{padding:0,overflow:'hidden',position:'relative',flex:1,minHeight:0}:{}}>{content}</main>
       </div>
       {showAdd && <AddRequestModal onClose={()=>setShowAdd(false)} onSave={(f)=>{setShowAdd(false); showToast('Survey request created');}}/>}
