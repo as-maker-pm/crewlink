@@ -1030,136 +1030,249 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
   if (!req) return null;
   const [cancelReason, setCancelReason] = useState(req.cancellationReason || '');
   const [showCancel, setShowCancel] = useState(false);
+
+  const InfoTile = ({ icon, label, value, wide=false }) => (
+    <div style={{padding:'13px 14px', border:'1px solid var(--border)', borderRadius:10,
+      background:'var(--bg,transparent)', gridColumn:wide?'1 / -1':'auto'}}>
+      <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:5,color:'var(--muted-foreground)'}}>
+        <Icon name={icon} size={11}/>
+        <span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em'}}>{label}</span>
+      </div>
+      <div style={{fontSize:13,fontWeight:600,lineHeight:1.45,wordBreak:'break-word'}}>{value || '—'}</div>
+    </div>
+  );
+
+  const priColor = {High:'var(--destructive)',Low:'var(--muted-foreground)',Normal:'var(--warning)'};
+  const priBg    = {High:'rgba(239,68,68,0.1)',Low:'var(--accent)',Normal:'rgba(245,158,11,0.1)'};
+
   return (
     <div>
-      <PageHead title={`${req.id} · ${req.homeownerName || req.client}`}
-        sub={req.address}
+      <PageHead title={req.id} sub={req.service}
         right={<>
           <button className="btn btn-ghost" onClick={onClose}><Icon name="chevleft" size={14}/>Back</button>
           <button className="btn btn-outline"><Icon name="edit" size={14}/>Edit</button>
-          {req.status !== 'Cancelled' && req.status !== 'Completed' && <button className="btn btn-outline" onClick={()=>setShowCancel(true)} style={{color:'var(--destructive)'}}><Icon name="x" size={14}/>Cancel</button>}
-          {req.status !== 'Completed' && <button className="btn btn-primary" onClick={()=>{onStatusChange(req,'Completed'); toast('Marked as completed');}}><Icon name="check" size={14}/>Mark complete</button>}
+          {req.status !== 'Cancelled' && req.status !== 'Completed' &&
+            <button className="btn btn-outline" style={{color:'var(--destructive)'}} onClick={()=>setShowCancel(true)}>
+              <Icon name="x" size={14}/>Cancel
+            </button>}
+          {req.status !== 'Completed' &&
+            <button className="btn btn-primary" onClick={()=>{onStatusChange(req,'Completed');toast('Marked as completed');}}>
+              <Icon name="check" size={14}/>Mark complete
+            </button>}
         </>}
       />
+
       {req.status === 'Cancelled' && req.cancellationReason && (
         <div className="banner warn" style={{marginBottom:16}}>
           <Icon name="alert" size={16}/>
-          <div><strong>Cancelled.</strong> Reason: {req.cancellationReason}</div>
+          <div><strong>Cancelled.</strong> {req.cancellationReason}</div>
         </div>
       )}
+
+      {/* Hero band */}
+      <div className="card" style={{marginBottom:20,padding:'20px 24px'}}>
+        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
+          <div>
+            <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10,flexWrap:'wrap'}}>
+              <span style={{fontSize:11,fontWeight:700,background:'var(--accent)',color:'var(--muted-foreground)',
+                padding:'3px 8px',borderRadius:6,letterSpacing:'.04em'}}>{req.id}</span>
+              {statusBadge(req.status)}
+              <span style={{fontSize:11,fontWeight:700,padding:'3px 8px',borderRadius:6,
+                color:priColor[req.priority]||'var(--muted-foreground)',
+                background:priBg[req.priority]||'var(--accent)'}}>
+                {req.priority} priority
+              </span>
+            </div>
+            <h2 style={{fontSize:22,fontWeight:800,margin:0,lineHeight:1.15}}>{req.service}</h2>
+            <div className="muted" style={{fontSize:13,marginTop:5,display:'flex',alignItems:'center',gap:5}}>
+              <Icon name="pin" size={12}/>{req.address}
+            </div>
+          </div>
+          <div style={{textAlign:'right',flexShrink:0}}>
+            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
+              color:'var(--muted-foreground)',marginBottom:3}}>Scheduled for</div>
+            <div style={{fontSize:16,fontWeight:700}}>{req.date}</div>
+            <div style={{fontSize:13,color:'var(--muted-foreground)',marginTop:2}}>
+              {req.time} &nbsp;·&nbsp; {req.slotMinutes||60} min
+            </div>
+            <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:10,display:'flex',
+              alignItems:'center',gap:4,justifyContent:'flex-end'}}>
+              <Icon name="clock" size={11}/>Created {req.created}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="detail-grid">
-        <div style={{display:'flex', flexDirection:'column', gap:18}}>
+        {/* ── LEFT COLUMN ── */}
+        <div style={{display:'flex',flexDirection:'column',gap:18}}>
+
+          {/* Homeowner */}
           <div className="card">
-            <div className="card-h"><h3>Homeowner & request details</h3>{statusBadge(req.status)}</div>
-            <div className="grid-2">
-              <div className="kv"><div className="k">Homeowner</div><div className="v">{req.homeownerName || req.client}</div></div>
-              <div className="kv"><div className="k">Email</div><div className="v">{req.email || '—'}</div></div>
-              <div className="kv"><div className="k">Phone</div><div className="v">{req.phone || '—'}</div></div>
-              <div className="kv"><div className="k">Dispatched by</div><div className="v">{req.cpm ? req.cpm.name : '—'}</div></div>
-              <div className="kv"><div className="k">Service</div><div className="v">{req.service} <span className="muted" style={{fontWeight:400}}>· {req.slotMinutes || 60} min</span></div></div>
-              <div className="kv"><div className="k">Priority</div><div className="v">{statusBadge(req.priority)}</div></div>
-              <div className="kv"><div className="k">Scheduled</div><div className="v">{req.date} at {req.time}</div></div>
-              <div className="kv"><div className="k">Created</div><div className="v">{req.created}</div></div>
-              <div className="kv" style={{gridColumn:'1 / -1'}}><div className="k">Address</div><div className="v">{req.address}</div></div>
-              <div className="kv" style={{gridColumn:'1 / -1'}}><div className="k">Notes</div><div className="v" style={{fontWeight:400, lineHeight:1.6}}>{req.noteText || req.notes}</div></div>
+            <div className="card-h"><h3>Homeowner</h3></div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <InfoTile icon="users" label="Name"    value={req.homeownerName||req.client}/>
+              <InfoTile icon="phone" label="Contact" value={req.phone}/>
+              <InfoTile icon="mail"  label="Email"   value={req.email}/>
+              <InfoTile icon="pin"   label="Address" value={req.address} wide/>
             </div>
           </div>
 
+          {/* Notes */}
+          {(req.noteText || req.notes) && (
+            <div className="card">
+              <div className="card-h"><h3>Notes</h3></div>
+              <div style={{fontSize:13,lineHeight:1.75,color:'var(--muted-foreground)',
+                padding:'12px 14px',background:'var(--accent)',borderRadius:8,
+                borderLeft:'3px solid var(--border)'}}>
+                {req.noteText || req.notes}
+              </div>
+            </div>
+          )}
+
+          {/* Proposal */}
           <div className="card">
-            <div className="card-h"><h3>Solar proposal</h3>{!req.proposal && <button className="btn btn-outline btn-sm"><Icon name="upload" size={14}/>Upload proposal</button>}</div>
+            <div className="card-h">
+              <h3>Solar proposal</h3>
+              {!req.proposal && <button className="btn btn-outline btn-sm"><Icon name="upload" size={14}/>Upload</button>}
+            </div>
             {req.proposal ?
-              <div className="row" style={{padding:14, border:'1px solid var(--border)', borderRadius:10}}>
-                <div style={{width:40, height:48, background:'var(--accent)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--primary)'}}><Icon name="file" size={20}/></div>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:600, fontSize:13}}>{req.proposal.fileName}</div>
-                  <div className="muted" style={{fontSize:12}}>PDF · {req.proposal.fileSize}</div>
+              <div className="row" style={{padding:14,border:'1px solid var(--border)',borderRadius:10,gap:14}}>
+                <div style={{width:40,height:48,background:'var(--accent)',borderRadius:6,
+                  display:'flex',alignItems:'center',justifyContent:'center',color:'var(--primary)',flexShrink:0}}>
+                  <Icon name="file" size={20}/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,fontSize:13}}>{req.proposal.fileName}</div>
+                  <div className="muted" style={{fontSize:12,marginTop:2}}>PDF · {req.proposal.fileSize}</div>
                 </div>
                 <button className="btn btn-ghost btn-sm"><Icon name="download" size={14}/>Download</button>
                 <button className="btn btn-ghost btn-sm"><Icon name="eye" size={14}/>Preview</button>
               </div>
               :
-              <div className="muted" style={{padding:'30px 0', textAlign:'center', border:'1px dashed var(--border)', borderRadius:10}}>
+              <div className="muted" style={{padding:'32px 0',textAlign:'center',
+                border:'1px dashed var(--border)',borderRadius:10,cursor:'pointer'}}>
                 <Icon name="upload" size={22}/>
-                <div style={{marginTop:8, fontSize:13}}>Drop a solar proposal PDF here or click to upload</div>
+                <div style={{marginTop:8,fontSize:13}}>Drop a PDF here or click to upload</div>
               </div>
             }
           </div>
 
+          {/* Photos */}
           <div className="card">
-            <div className="card-h"><h3>Activity</h3></div>
-            <div style={{display:'flex', flexDirection:'column', gap:14, position:'relative'}}>
-              {[
-                { t:'Survey scheduled',  when:'2 days ago', who:'Jamie Reyes', icon:'calendar' },
-                { t:'Tech assigned: '+req.tech.name, when:'2 days ago', who:'Auto-assignment', icon:'users' },
-                req.proposal ? { t:'Proposal uploaded: '+req.proposal.fileName, when:'3 days ago', who:'CPM · '+(req.cpm?req.cpm.name:'Dispatcher'), icon:'file' } : null,
-                { t:'Request created',   when:'4 days ago', who:'Customer portal', icon:'plus' },
-              ].filter(Boolean).map((a,i) => (
-                <div key={i} className="row">
-                  <div style={{width:32, height:32, borderRadius:'50%', background:'var(--accent)', color:'var(--primary)', display:'flex',alignItems:'center', justifyContent:'center'}}><Icon name={a.icon} size={14}/></div>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:13, fontWeight:600}}>{a.t}</div>
-                    <div className="muted" style={{fontSize:12}}>{a.who} · {a.when}</div>
-                  </div>
-                </div>
-              ))}
+            <div className="card-h">
+              <h3>Photos & files</h3>
+              <button className="btn btn-outline btn-sm"><Icon name="upload" size={14}/>Upload</button>
             </div>
-          </div>
-
-          <div className="card">
-            <div className="card-h"><h3>Photos & files</h3><button className="btn btn-outline btn-sm"><Icon name="upload" size={14}/>Upload</button></div>
-            {req.photos === 0 ?
-              <div style={{padding:'30px 0', textAlign:'center'}} className="muted">No files yet</div>
-              :
-              <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10}}>
-                {Array.from({length:req.photos}).map((_,i) => (
-                  <div key={i} style={{aspectRatio:'1', background:'var(--muted)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center'}}>
-                    <Icon name="file" size={22}/>
-                  </div>
-                ))}
-              </div>
+            {req.photos === 0
+              ? <div style={{padding:'32px 0',textAlign:'center',border:'1px dashed var(--border)',
+                  borderRadius:10}} className="muted">No photos or files uploaded yet</div>
+              : <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
+                  {Array.from({length:req.photos}).map((_,i) => (
+                    <div key={i} style={{aspectRatio:'1',background:'var(--muted)',borderRadius:8,
+                      display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <Icon name="file" size={22}/>
+                    </div>
+                  ))}
+                </div>
             }
           </div>
         </div>
 
-        <div style={{display:'flex', flexDirection:'column', gap:18}}>
+        {/* ── RIGHT SIDEBAR ── */}
+        <div style={{display:'flex',flexDirection:'column',gap:18}}>
+
+          {/* Technician */}
           <div className="card">
             <div className="card-h"><h3>Assigned technician</h3></div>
-            <div className="row" style={{gap:14}}>
-              <div className="avatar-md" style={{width:54, height:54, fontSize:18}}>{req.tech.name.split(' ').map(n=>n[0]).join('')}</div>
-              <div>
-                <div style={{fontWeight:700}}>{req.tech.name}</div>
-                <div className="muted" style={{fontSize:12}}>{req.tech.spec}</div>
-                <div style={{color:'var(--warning)', fontSize:13, fontWeight:600}}>★ {req.tech.rating} · {req.tech.jobs} jobs</div>
+            <div style={{display:'flex',alignItems:'center',gap:14,paddingBottom:14}}>
+              <div className="avatar-md" style={{width:52,height:52,fontSize:18,flexShrink:0}}>
+                {req.tech.name.split(' ').map(n=>n[0]).join('')}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:15}}>{req.tech.name}</div>
+                <div className="muted" style={{fontSize:12,marginTop:2}}>{req.tech.spec}</div>
+                <div style={{color:'var(--warning)',fontSize:12,fontWeight:600,marginTop:4}}>
+                  ★ {req.tech.rating} &nbsp;·&nbsp; {req.tech.jobs} jobs
+                </div>
               </div>
             </div>
-            <div className="divider"/>
-            <div className="row muted" style={{fontSize:13}}><Icon name="phone" size={14}/>{req.tech.phone}</div>
-            <div className="row muted" style={{fontSize:13, marginTop:6}}><Icon name="mail" size={14}/>{req.tech.email}</div>
-            <button className="btn btn-outline btn-sm" style={{marginTop:14, width:'100%'}}>Reassign technician</button>
+            <div style={{borderTop:'1px solid var(--border)',paddingTop:12,display:'flex',flexDirection:'column',gap:8}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'var(--muted-foreground)'}}>
+                <Icon name="phone" size={13}/>{req.tech.phone}
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'var(--muted-foreground)'}}>
+                <Icon name="mail" size={13}/><span style={{wordBreak:'break-all'}}>{req.tech.email}</span>
+              </div>
+            </div>
+            <button className="btn btn-outline btn-sm" style={{marginTop:14,width:'100%'}}>
+              Reassign technician
+            </button>
           </div>
 
+          {/* Dispatcher */}
           {req.cpm && (
             <div className="card">
-              <div className="card-h"><h3>Dispatched by (CPM)</h3></div>
-              <div className="row" style={{gap:14}}>
-                <div className="avatar-md">{req.cpm.name.split(' ').map(n=>n[0]).join('')}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:700, fontSize:13}}>{req.cpm.name}</div>
-                  <div className="muted" style={{fontSize:12}}>{req.cpm.role}</div>
+              <div className="card-h"><h3>Dispatcher</h3></div>
+              <div style={{display:'flex',alignItems:'center',gap:12}}>
+                <div className="avatar-md" style={{flexShrink:0}}>
+                  {req.cpm.name.split(' ').map(n=>n[0]).join('')}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:14}}>{req.cpm.name}</div>
+                  <div className="muted" style={{fontSize:12,marginTop:2}}>{req.cpm.role}</div>
                 </div>
                 {statusBadge(req.cpm.status)}
               </div>
             </div>
           )}
 
+          {/* Status */}
           <div className="card">
             <div className="card-h"><h3>Status</h3></div>
-            <div style={{display:'flex', flexDirection:'column', gap:8}}>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
               {STATUSES.map(s => (
-                <div key={s} onClick={()=>{ if(s==='Cancelled'){setShowCancel(true);} else {onStatusChange(req,s); toast(`Status changed to "${s}"`);} }}
-                  style={{padding:'9px 12px', border:'1px solid var(--border)', borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', background: req.status===s?'var(--accent)':'transparent'}}>
-                  <span style={{fontSize:13, fontWeight:500}}>{s}</span>
-                  {req.status===s && <Icon name="check" size={14}/>}
+                <div key={s}
+                  onClick={()=>s==='Cancelled'?setShowCancel(true):(onStatusChange(req,s),toast(`Status → ${s}`))}
+                  style={{padding:'9px 12px',border:'1px solid',cursor:'pointer',borderRadius:8,
+                    display:'flex',alignItems:'center',justifyContent:'space-between',
+                    background:req.status===s?'var(--accent)':'transparent',
+                    borderColor:req.status===s?'var(--primary)':'var(--border)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:9}}>
+                    <div style={{width:7,height:7,borderRadius:'50%',flexShrink:0,
+                      background:req.status===s?'var(--primary)':'var(--border)'}}/>
+                    <span style={{fontSize:13,fontWeight:req.status===s?600:400}}>{s}</span>
+                  </div>
+                  {req.status===s && <Icon name="check" size={13}/>}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Activity timeline */}
+          <div className="card">
+            <div className="card-h"><h3>Activity</h3></div>
+            <div style={{display:'flex',flexDirection:'column'}}>
+              {[
+                {t:'Survey scheduled', when:'2 days ago', who:'Jamie Reyes',    icon:'calendar'},
+                {t:'Tech assigned: '+req.tech.name, when:'2 days ago', who:'Auto-assignment', icon:'users'},
+                req.proposal?{t:'Proposal uploaded', when:'3 days ago', who:req.cpm?.name||'Dispatcher', icon:'file'}:null,
+                {t:'Request created',  when:'4 days ago', who:'Customer portal', icon:'plus'},
+              ].filter(Boolean).map((a,i,arr) => (
+                <div key={i} style={{display:'flex',gap:12,paddingBottom:i<arr.length-1?14:0}}>
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
+                    <div style={{width:28,height:28,borderRadius:'50%',flexShrink:0,
+                      background:'var(--accent)',color:'var(--primary)',
+                      display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <Icon name={a.icon} size={12}/>
+                    </div>
+                    {i<arr.length-1 && <div style={{width:1,flex:1,minHeight:8,
+                      background:'var(--border)',margin:'3px 0'}}/>}
+                  </div>
+                  <div style={{paddingTop:4,flex:1}}>
+                    <div style={{fontSize:12,fontWeight:600}}>{a.t}</div>
+                    <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:2}}>{a.who} · {a.when}</div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1175,7 +1288,7 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
               <button className="icon-btn" onClick={()=>setShowCancel(false)}><Icon name="x"/></button>
             </div>
             <div className="modal-b">
-              <div className="muted" style={{fontSize:13, marginBottom:14}}>This will notify the homeowner and technician. Please share a reason.</div>
+              <div className="muted" style={{fontSize:13,marginBottom:14}}>This will notify the homeowner and technician. Please share a reason.</div>
               <div className="field">
                 <label>Cancellation reason <span className="req">*</span></label>
                 <select className="input" value={cancelReason} onChange={e=>setCancelReason(e.target.value)}>
@@ -1194,7 +1307,10 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
             </div>
             <div className="modal-f">
               <button className="btn btn-outline" onClick={()=>setShowCancel(false)}>Keep request</button>
-              <button className="btn btn-danger" disabled={!cancelReason} onClick={()=>{ onStatusChange(req,'Cancelled'); req.cancellationReason = cancelReason; toast('Request cancelled'); setShowCancel(false);}}>Cancel request</button>
+              <button className="btn btn-danger" disabled={!cancelReason}
+                onClick={()=>{onStatusChange(req,'Cancelled');req.cancellationReason=cancelReason;toast('Request cancelled');setShowCancel(false);}}>
+                Cancel request
+              </button>
             </div>
           </div>
         </div>
