@@ -863,7 +863,7 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
   }, [view, cursor]);
 
   return (
-    <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column',overflow:'hidden',background:'var(--card)'}}>
+    <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',overflow:'hidden',background:'var(--card)'}}>
       {/* Single unified toolbar */}
       <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 20px',flexWrap:'wrap',flexShrink:0,borderBottom:'1px solid var(--border)'}}>
         <div className="row" style={{gap:4}}>
@@ -2042,9 +2042,9 @@ function App() {
   return (
     <div className="app" data-screen-label={NAV_DEFS[route]?.label || 'CrewLink'}>
       <Sidebar role={role} route={route} setRoute={setRoute} collapsed={collapsed} setCollapsed={setCollapsed}/>
-      <div style={{display:'flex', flexDirection:'column', minWidth:0, minHeight:0, height:'100%', overflow:'hidden'}}>
+      <div style={{display:'flex', flexDirection:'column', minWidth:0, height:'100vh', overflow:'hidden'}}>
         <Header role={role} setRole={setRole} theme={theme} setTheme={setTheme} onAdd={()=>setShowAdd(true)} onSearch={setQuery} query={query} onSignOut={()=>setView('signin')} setView={setView}/>
-        <main className="main" style={route==='calendar'?{padding:0,overflow:'hidden',display:'flex',flexDirection:'column'}:{}}>{content}</main>
+        <main className="main" style={route==='calendar'?{padding:0,overflow:'hidden',position:'relative',flex:1,minHeight:0}:{}}>{content}</main>
       </div>
       {showAdd && <AddRequestModal onClose={()=>setShowAdd(false)} onSave={(f)=>{setShowAdd(false); showToast('Survey request created');}}/>}
       {toast && <div className="toast"><Icon name="check" size={16}/>{toast}</div>}
