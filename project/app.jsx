@@ -520,104 +520,180 @@ const TechHome = ({ go }) => {
 };
 
 /* ---------- CALENDAR ---------- */
-const Calendar = ({ go, openDetail }) => {
-  const [view, setView] = useState('month');
-  const [cursor, setCursor] = useState(new Date(2025, 10, 12)); // Nov 12 2025
+const CAL_HOUR_PX = 64;
+const CAL_START   = 7;
+const CAL_END     = 20;
+const CAL_HOURS   = Array.from({length: CAL_END - CAL_START}, (_, i) => i + CAL_START);
+const TODAY_STR   = '2025-11-12';
+const NOW_MIN     = 10 * 60 + 30; // simulated 10:30 am
 
-  const monthName = cursor.toLocaleString('en-US', {month:'long', year:'numeric'});
+const minToTime = (min) => {
+  const h = Math.floor(min / 60), m = min % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+};
+const timeToMin  = (t) => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+const timeToY    = (t) => { const [h,m] = t.split(':').map(Number); return (h - CAL_START + m/60) * CAL_HOUR_PX; };
+const addMinutes = (t, n) => minToTime(Math.max(CAL_START*60, Math.min(CAL_END*60, timeToMin(t)+n)));
+const snapTime   = (y) => {
+  const raw = Math.round((y / CAL_HOUR_PX * 60 + CAL_START * 60) / 15) * 15;
+  return minToTime(Math.max(CAL_START*60, Math.min((CAL_END-0.25)*60, raw)));
+};
+const fmtHour    = (h) => h === 12 ? '12pm' : h > 12 ? `${h-12}pm` : `${h}am`;
 
-  const shift = (n) => {
-    const d = new Date(cursor);
-    if (view==='month') d.setMonth(d.getMonth()+n);
-    else if (view==='week') d.setDate(d.getDate()+ 7*n);
-    else d.setDate(d.getDate()+n);
-    setCursor(d);
+const calFilterByRole = (reqs, role) => {
+  if (role.key === 'tech') return reqs.filter(r => r.tech.id === 't1');
+  if (role.key === 'cpm')  return reqs.filter(r => r.cpm?.clientId === 'c1');
+  return reqs;
+};
+
+const layoutDay = (events) => {
+  const sorted = [...events].sort((a,b) => timeToMin(a.time) - timeToMin(b.time));
+  const cols = [];
+  sorted.forEach(ev => {
+    let placed = false;
+    for (let i = 0; i < cols.length; i++) {
+      const prev = cols[i][cols[i].length-1];
+      if (timeToMin(prev.time) + (prev.slotMinutes||60) <= timeToMin(ev.time)) {
+        cols[i].push(ev); placed = true; break;
+      }
+    }
+    if (!placed) cols.push([ev]);
+  });
+  const result = {};
+  cols.forEach((col,ci) => col.forEach(ev => { result[ev.id] = {col:ci, total:cols.length}; }));
+  return result;
+};
+
+const EV_COLORS = {
+  Pending:   {bg:'rgba(0,123,255,0.13)',  bd:'var(--primary)',     fg:'var(--primary)'},
+  Completed: {bg:'rgba(16,185,129,0.13)', bd:'var(--success)',     fg:'var(--success)'},
+  Cancelled: {bg:'rgba(239,68,68,0.11)',  bd:'var(--destructive)', fg:'var(--destructive)'},
+};
+
+/* Shared column used by both week and day views */
+const DayColumn = ({ dayKey, events, bufs, onOpen, onCreate, isToday }) => {
+  const ref    = useRef(null);
+  const [drag, setDrag] = useState(null);
+  const layout = useMemo(() => layoutDay(events), [events]);
+  const totalH = CAL_HOUR_PX * (CAL_END - CAL_START);
+  const nowY   = isToday ? ((NOW_MIN - CAL_START*60)/60)*CAL_HOUR_PX : -1;
+
+  const getY = (e) => {
+    const rect = ref.current.getBoundingClientRect();
+    return Math.max(0, Math.min(e.clientY - rect.top, totalH - 1));
   };
 
   return (
-    <div>
-      <PageHead title="Calendar" sub="Manage technician schedules and availability"
-        right={<>
-          <div className="seg">
-            <button className={view==='month'?'active':''} onClick={()=>setView('month')}>Month</button>
-            <button className={view==='week'?'active':''} onClick={()=>setView('week')}>Week</button>
-            <button className={view==='day'?'active':''} onClick={()=>setView('day')}>Day</button>
-          </div>
-          <button className="btn btn-outline"><Icon name="filter" size={14}/>Filters</button>
-        </>}
-      />
+    <div ref={ref}
+      style={{flex:1, position:'relative', height:totalH, borderRight:'1px solid var(--border)', cursor:'crosshair', userSelect:'none', minWidth:0}}
+      onMouseDown={e => { if (e.target.closest('[data-ev]')) return; e.preventDefault(); const y=getY(e); setDrag({y0:y,y1:y}); }}
+      onMouseMove={e => { if (!drag) return; setDrag(d=>({...d,y1:getY(e)})); }}
+      onMouseUp={e => {
+        if (!drag) return;
+        const y0=Math.min(drag.y0,drag.y1), y1=Math.max(drag.y0,drag.y1);
+        const t0=snapTime(y0), t1=y1-y0<16?addMinutes(t0,60):snapTime(y1);
+        onCreate({date:dayKey, time:t0, endTime:t1});
+        setDrag(null);
+      }}
+      onMouseLeave={() => setDrag(null)}
+    >
+      {/* Grid lines */}
+      {CAL_HOURS.map((h,i) => (
+        <React.Fragment key={h}>
+          <div style={{position:'absolute',left:0,right:0,top:i*CAL_HOUR_PX,borderTop:'1px solid var(--border)',pointerEvents:'none'}}/>
+          <div style={{position:'absolute',left:0,right:0,top:i*CAL_HOUR_PX+CAL_HOUR_PX/2,borderTop:'1px dashed var(--border)',opacity:.35,pointerEvents:'none'}}/>
+        </React.Fragment>
+      ))}
 
-      <div className="card">
-        <div className="cal-toolbar">
-          <div className="row">
-            <button className="icon-btn" onClick={()=>shift(-1)}><Icon name="chevleft"/></button>
-            <button className="btn btn-outline btn-sm" onClick={()=>setCursor(new Date(2025,10,12))}>Today</button>
-            <button className="icon-btn" onClick={()=>shift(1)}><Icon name="chevright"/></button>
-            <h2 style={{fontSize:18, marginLeft:8}}>{view==='month'?monthName:cursor.toDateString()}</h2>
-          </div>
-          <div className="row" style={{gap:14}}>
-            <span className="muted" style={{fontSize:12, display:'flex', alignItems:'center', gap:6}}><span className="dot" style={{background:'var(--primary)'}}/>Active</span>
-            <span className="muted" style={{fontSize:12, display:'flex', alignItems:'center', gap:6}}><span className="dot" style={{background:'var(--success)'}}/>Completed</span>
-            <span className="muted" style={{fontSize:12, display:'flex', alignItems:'center', gap:6}}><span className="dot" style={{background:'var(--destructive)'}}/>Cancelled</span>
-            <span className="muted" style={{fontSize:12, display:'flex', alignItems:'center', gap:6}}><span className="dot" style={{background:'var(--warning)'}}/>Conflict</span>
-          </div>
+      {/* Buffer blocks (tech view) */}
+      {bufs.map(b => (
+        <div key={b.id} style={{position:'absolute',top:timeToY(b.time),height:Math.max(16,(b.slotMinutes/60)*CAL_HOUR_PX),left:2,right:2,
+          background:'repeating-linear-gradient(45deg,var(--muted) 0,var(--muted) 4px,transparent 4px,transparent 9px)',
+          border:'1px dashed var(--border)',borderRadius:4,pointerEvents:'none',
+          display:'flex',alignItems:'center',paddingLeft:6,fontSize:9,fontWeight:600,color:'var(--muted-foreground)',opacity:.8}}>
+          ↔ {b.label}
         </div>
+      ))}
 
-        {view==='month' && <MonthView cursor={cursor} setView={setView} setCursor={setCursor} openDetail={openDetail}/>}
-        {view==='week'  && <WeekView  cursor={cursor} openDetail={openDetail}/>}
-        {view==='day'   && <DayView   cursor={cursor} openDetail={openDetail}/>}
-      </div>
+      {/* Events */}
+      {events.map(ev => {
+        const {col,total} = layout[ev.id]||{col:0,total:1};
+        const pct = 100/total;
+        const c = EV_COLORS[ev.status]||EV_COLORS.Pending;
+        const h = Math.max(24, (ev.slotMinutes||60)/60*CAL_HOUR_PX - 2);
+        return (
+          <div key={ev.id} data-ev="1"
+            onClick={e=>{e.stopPropagation(); onOpen(ev);}}
+            style={{position:'absolute',top:timeToY(ev.time),height:h,
+              left:`calc(${pct*col}% + 2px)`,width:`calc(${pct}% - 4px)`,
+              background:c.bg,borderLeft:`3px solid ${c.bd}`,borderRadius:6,
+              padding:'4px 7px',cursor:'pointer',overflow:'hidden',
+              boxShadow:'0 1px 4px rgba(0,0,0,.08)',zIndex:2,transition:'filter .1s'}}
+            onMouseEnter={e=>e.currentTarget.style.filter='brightness(0.93)'}
+            onMouseLeave={e=>e.currentTarget.style.filter=''}
+          >
+            <div style={{fontSize:11,fontWeight:700,color:c.fg,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ev.time} · {ev.client.split(' ')[0]}</div>
+            {h>38 && <div style={{fontSize:10,color:c.fg,opacity:.8,marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ev.service}</div>}
+            {h>54 && <div style={{fontSize:10,color:c.fg,opacity:.65,marginTop:1}}>{ev.tech.name.split(' ')[0]} · {ev.slotMinutes||60}m</div>}
+          </div>
+        );
+      })}
+
+      {/* Current time line */}
+      {nowY >= 0 && (
+        <div style={{position:'absolute',left:0,right:0,top:nowY,pointerEvents:'none',zIndex:10,display:'flex',alignItems:'center'}}>
+          <div style={{width:8,height:8,borderRadius:'50%',background:'var(--destructive)',flexShrink:0,marginLeft:-1}}/>
+          <div style={{flex:1,height:2,background:'var(--destructive)'}}/>
+        </div>
+      )}
+
+      {/* Drag selection */}
+      {drag && Math.abs(drag.y1-drag.y0)>4 && (
+        <div style={{position:'absolute',left:2,right:2,top:Math.min(drag.y0,drag.y1),height:Math.abs(drag.y1-drag.y0),
+          background:'rgba(0,123,255,.12)',border:'1.5px dashed var(--primary)',borderRadius:4,
+          pointerEvents:'none',zIndex:5,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          {Math.abs(drag.y1-drag.y0)>22 && <span style={{fontSize:10,fontWeight:700,color:'var(--primary)'}}>{snapTime(Math.min(drag.y0,drag.y1))} – {snapTime(Math.max(drag.y0,drag.y1))}</span>}
+        </div>
+      )}
     </div>
   );
 };
 
-const MonthView = ({ cursor, setView, setCursor, openDetail }) => {
-  const year = cursor.getFullYear();
-  const month = cursor.getMonth();
-  const first = new Date(year, month, 1);
-  const startDow = first.getDay();
-  const totalDays = new Date(year, month+1, 0).getDate();
-  const cells = [];
-  // leading from prev month
-  const prevDays = new Date(year, month, 0).getDate();
-  for (let i = startDow-1; i >= 0; i--) cells.push({ date: new Date(year, month-1, prevDays-i), muted:true });
-  for (let i = 1; i <= totalDays; i++) cells.push({ date: new Date(year, month, i), muted:false });
-  while (cells.length % 7 !== 0) {
-    const d = cells[cells.length-1].date;
-    cells.push({ date: new Date(d.getFullYear(), d.getMonth(), d.getDate()+1), muted:true });
-  }
-  // pad to 6 weeks for consistent height
-  while (cells.length < 42) {
-    const d = cells[cells.length-1].date;
-    cells.push({ date: new Date(d.getFullYear(), d.getMonth(), d.getDate()+1), muted:true });
-  }
-  const today = new Date(2025,10,12);
-  const todayStr = today.toISOString().slice(0,10);
-  const fmt = d => d.toISOString().slice(0,10);
+const MonthView = ({ cursor, role, setView, setCursor, openDetail }) => {
+  const year=cursor.getFullYear(), month=cursor.getMonth();
+  const startDow=new Date(year,month,1).getDay();
+  const totalDays=new Date(year,month+1,0).getDate();
+  const prevDays=new Date(year,month,0).getDate();
+  const cells=[];
+  for (let i=startDow-1;i>=0;i--) cells.push({date:new Date(year,month-1,prevDays-i),muted:true});
+  for (let i=1;i<=totalDays;i++)   cells.push({date:new Date(year,month,i),muted:false});
+  while (cells.length<42) { const d=cells[cells.length-1].date; cells.push({date:new Date(d.getFullYear(),d.getMonth(),d.getDate()+1),muted:true}); }
+  const fmt=d=>d.toISOString().slice(0,10);
+  const allVisible = calFilterByRole(REQUESTS, role);
+  const visibleByDate = {};
+  allVisible.forEach(r=>{ if(!visibleByDate[r.date]) visibleByDate[r.date]=[]; visibleByDate[r.date].push(r); });
 
   return (
     <div>
       <div className="cal-month-grid" style={{marginBottom:6}}>
-        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="cal-dow">{d}</div>)}
+        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=><div key={d} className="cal-dow">{d}</div>)}
       </div>
       <div className="cal-month-grid">
-        {cells.map((c, i) => {
-          const k = fmt(c.date);
-          const events = (BOOKINGS_BY_DATE[k] || []).slice(0, 3);
-          const hasMore = (BOOKINGS_BY_DATE[k] || []).length - events.length;
-          const isToday = k === todayStr;
+        {cells.map((c,i)=>{
+          const k=fmt(c.date), isToday=k===TODAY_STR;
+          const evs=(visibleByDate[k]||[]).slice(0,3);
+          const extra=(visibleByDate[k]||[]).length-evs.length;
           return (
             <div key={i} className={`cal-day ${c.muted?'muted':''} ${isToday?'today':''}`}
-                 onClick={()=>{ setCursor(c.date); setView('day'); }}>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+              onClick={()=>{setCursor(c.date);setView('day');}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                 <span className="cal-day-num">{c.date.getDate()}</span>
-                {events.length>0 && <span className="muted" style={{fontSize:10}}>{events.length + (hasMore>0?hasMore:0)}</span>}
               </div>
-              {events.map((ev, ei) => {
-                const cls = ev.status==='Completed'?'completed':ev.status==='Cancelled'?'cancelled':(ei===0&&i%9===3)?'conflict':'active';
-                return <div key={ev.id} className={`cal-event ${cls}`} onClick={(e)=>{e.stopPropagation(); openDetail(ev);}}>{ev.time} · {ev.client.split(' ')[0]}</div>;
+              {evs.map((ev,ei)=>{
+                const cls=ev.status==='Completed'?'completed':ev.status==='Cancelled'?'cancelled':'active';
+                return <div key={ev.id} className={`cal-event ${cls}`} onClick={e=>{e.stopPropagation();openDetail(ev);}}>{ev.time} · {ev.client.split(' ')[0]}</div>;
               })}
-              {hasMore > 0 && <div className="cal-more">+{hasMore} more</div>}
+              {extra>0 && <div className="cal-more">+{extra} more</div>}
             </div>
           );
         })}
@@ -626,75 +702,166 @@ const MonthView = ({ cursor, setView, setCursor, openDetail }) => {
   );
 };
 
-const WeekView = ({ cursor, openDetail }) => {
-  const start = new Date(cursor); start.setDate(cursor.getDate() - cursor.getDay());
-  const days = Array.from({length:7}, (_,i) => { const d = new Date(start); d.setDate(start.getDate()+i); return d; });
-  const slots = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'];
-  const todayStr = new Date(2025,10,12).toISOString().slice(0,10);
+const WeekView = ({ cursor, role, onOpen, onCreate }) => {
+  const start=new Date(cursor); start.setDate(cursor.getDate()-cursor.getDay());
+  const days=Array.from({length:7},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);return d;});
+  const visibleAll = calFilterByRole(REQUESTS, role);
+
   return (
-    <div className="week-grid">
-      <div className="week-head"></div>
-      {days.map(d => {
-        const isT = d.toISOString().slice(0,10) === todayStr;
-        return <div key={d.toISOString()} className={`week-head ${isT?'today':''}`}>
-          <div style={{fontSize:11, opacity:.7}}>{d.toLocaleString('en',{weekday:'short'})}</div>
-          <div>{d.getDate()}</div>
-        </div>;
-      })}
-      {slots.map(slot => (
-        <React.Fragment key={slot}>
-          <div className="week-time">{slot}</div>
-          {days.map(d => {
-            const k = d.toISOString().slice(0,10);
-            const events = (BOOKINGS_BY_DATE[k]||[]).filter(e => e.time === slot);
-            return (
-              <div key={k+slot} className="week-cell">
-                {events.map((ev, ei) => {
-                  const cls = ev.status==='Completed'?'completed':ev.status==='Cancelled'?'cancelled':(ei===0 && d.getDate()%5===0)?'conflict':'active';
-                  return <div key={ev.id} className={`cal-event ${cls}`} onClick={()=>openDetail(ev)}>{ev.client.split(' ')[0]} · {ev.tech.name.split(' ')[0]}</div>;
-                })}
-              </div>
-            );
-          })}
-        </React.Fragment>
-      ))}
+    <div style={{border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}}>
+      {/* Day headers */}
+      <div style={{display:'flex',borderBottom:'1px solid var(--border)'}}>
+        <div style={{width:56,flexShrink:0,background:'var(--muted)'}}/>
+        {days.map(d=>{
+          const k=d.toISOString().slice(0,10), isT=k===TODAY_STR;
+          const cnt=visibleAll.filter(r=>r.date===k).length;
+          return (
+            <div key={k} style={{flex:1,padding:'8px 0',textAlign:'center',background:isT?'var(--accent)':'var(--muted)',borderLeft:'1px solid var(--border)'}}>
+              <div style={{fontSize:10,color:isT?'var(--primary)':'var(--muted-foreground)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em'}}>{d.toLocaleString('en',{weekday:'short'})}</div>
+              <div style={{fontSize:22,fontWeight:800,color:isT?'var(--primary)':'var(--foreground)',lineHeight:1.1,marginTop:1}}>{d.getDate()}</div>
+              {cnt>0&&<div style={{fontSize:9,color:'var(--muted-foreground)',marginTop:2}}>{cnt} event{cnt>1?'s':''}</div>}
+            </div>
+          );
+        })}
+      </div>
+      {/* Scrollable body */}
+      <div style={{display:'flex',overflowY:'auto',maxHeight:580}}>
+        <div style={{width:56,flexShrink:0,position:'relative',height:CAL_HOUR_PX*(CAL_END-CAL_START),borderRight:'1px solid var(--border)',background:'var(--background)'}}>
+          {CAL_HOURS.map((h,i)=>(
+            <div key={h} style={{position:'absolute',top:i*CAL_HOUR_PX-7,right:8,fontSize:10,fontWeight:600,color:'var(--muted-foreground)'}}>{fmtHour(h)}</div>
+          ))}
+        </div>
+        {days.map(d=>{
+          const k=d.toISOString().slice(0,10);
+          const evs=visibleAll.filter(r=>r.date===k);
+          const bufs=role.key==='tech'?evs.flatMap(ev=>[
+            {id:`bb${ev.id}`,time:minToTime(Math.max(CAL_START*60,timeToMin(ev.time)-30)),slotMinutes:30,label:'Buffer'},
+            {id:`ba${ev.id}`,time:addMinutes(ev.time,ev.slotMinutes||60),slotMinutes:30,label:'Buffer'},
+          ]):[];
+          return <DayColumn key={k} dayKey={k} events={evs} bufs={bufs} onOpen={onOpen} onCreate={onCreate} isToday={k===TODAY_STR}/>;
+        })}
+      </div>
     </div>
   );
 };
 
-const DayView = ({ cursor, openDetail }) => {
-  const k = cursor.toISOString().slice(0,10);
-  const slots = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'];
-  const events = BOOKINGS_BY_DATE[k] || [];
-  const hasConflict = events.length > 1 && cursor.getDate() % 4 === 0;
+const DayView = ({ cursor, role, onOpen, onCreate }) => {
+  const k=cursor.toISOString().slice(0,10);
+  const evs=calFilterByRole(REQUESTS.filter(r=>r.date===k),role);
+  const bufs=role.key==='tech'?evs.flatMap(ev=>[
+    {id:`bb${ev.id}`,time:minToTime(Math.max(CAL_START*60,timeToMin(ev.time)-30)),slotMinutes:30,label:'Travel buffer'},
+    {id:`ba${ev.id}`,time:addMinutes(ev.time,ev.slotMinutes||60),slotMinutes:30,label:'Travel buffer'},
+  ]):[];
+  const hasConflict=evs.length>1&&cursor.getDate()%4===0;
   return (
     <div>
-      {hasConflict && (
-        <div className="banner warn">
-          <Icon name="alert" size={16}/>
-          <div><strong>Schedule conflict detected.</strong> Two requests overlap at 13:00. <a href="#" style={{color:'inherit', textDecoration:'underline'}}>Reassign</a></div>
+      {hasConflict&&<div className="banner warn" style={{marginBottom:14}}><Icon name="alert" size={16}/><div><strong>Conflict detected.</strong> Requests overlap at 13:00. <a href="#" style={{color:'inherit',textDecoration:'underline'}}>Reassign</a></div></div>}
+      <div style={{border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}}>
+        <div style={{display:'flex',borderBottom:'1px solid var(--border)'}}>
+          <div style={{width:56,background:'var(--muted)'}}/>
+          <div style={{flex:1,padding:'12px 16px',background:k===TODAY_STR?'var(--accent)':'var(--muted)',borderLeft:'1px solid var(--border)',textAlign:'center'}}>
+            <div style={{fontSize:14,fontWeight:700,color:k===TODAY_STR?'var(--primary)':'var(--foreground)'}}>{cursor.toLocaleString('en',{weekday:'long',month:'long',day:'numeric'})}</div>
+            <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>{evs.length} event{evs.length!==1?'s':''}{role.key==='tech'?' · buffer times shown':''}</div>
+          </div>
+        </div>
+        <div style={{display:'flex',overflowY:'auto',maxHeight:580}}>
+          <div style={{width:56,flexShrink:0,position:'relative',height:CAL_HOUR_PX*(CAL_END-CAL_START),borderRight:'1px solid var(--border)',background:'var(--background)'}}>
+            {CAL_HOURS.map((h,i)=>(
+              <div key={h} style={{position:'absolute',top:i*CAL_HOUR_PX-7,right:8,fontSize:10,fontWeight:600,color:'var(--muted-foreground)'}}>{fmtHour(h)}</div>
+            ))}
+          </div>
+          <DayColumn dayKey={k} events={evs} bufs={bufs} onOpen={onOpen} onCreate={onCreate} isToday={k===TODAY_STR}/>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Calendar = ({ role, go, openDetail, onAdd }) => {
+  const [view, setView]     = useState('week');
+  const [cursor, setCursor] = useState(new Date(2025,10,10));
+  const [createAt, setCreateAt] = useState(null);
+
+  const shift = n => {
+    const d=new Date(cursor);
+    if (view==='month') d.setMonth(d.getMonth()+n);
+    else if (view==='week') d.setDate(d.getDate()+7*n);
+    else d.setDate(d.getDate()+n);
+    setCursor(d);
+  };
+
+  const label = view==='month'
+    ? cursor.toLocaleString('en-US',{month:'long',year:'numeric'})
+    : view==='week'
+    ? (()=>{ const s=new Date(cursor); s.setDate(cursor.getDate()-cursor.getDay()); const e=new Date(s); e.setDate(s.getDate()+6); return `${s.toLocaleString('en',{month:'short',day:'numeric'})} – ${e.toLocaleString('en',{month:'short',day:'numeric',year:'numeric'})}`; })()
+    : cursor.toLocaleString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+  return (
+    <div>
+      <PageHead
+        title="Calendar"
+        sub={role.key==='tech'?'Your schedule · buffer times shown':'Manage technician schedules and availability'}
+        right={<>
+          <div className="seg">
+            <button className={view==='month'?'active':''} onClick={()=>setView('month')}>Month</button>
+            <button className={view==='week'?'active':''} onClick={()=>setView('week')}>Week</button>
+            <button className={view==='day'?'active':''} onClick={()=>setView('day')}>Day</button>
+          </div>
+          <button className="btn btn-outline"><Icon name="filter" size={14}/>Filter</button>
+          <button className="btn btn-primary" onClick={onAdd}><Icon name="plus" size={14}/>New Booking</button>
+        </>}
+      />
+
+      <div className="card">
+        <div className="cal-toolbar">
+          <div className="row">
+            <button className="icon-btn" onClick={()=>shift(-1)}><Icon name="chevleft"/></button>
+            <button className="btn btn-outline btn-sm" onClick={()=>setCursor(new Date(2025,10,10))}>Today</button>
+            <button className="icon-btn" onClick={()=>shift(1)}><Icon name="chevright"/></button>
+            <h2 style={{fontSize:16,marginLeft:8,fontWeight:700}}>{label}</h2>
+          </div>
+          <div className="row" style={{gap:14,flexWrap:'wrap'}}>
+            {role.key==='tech'&&(
+              <span style={{display:'flex',alignItems:'center',gap:6,fontSize:12}} className="muted">
+                <span style={{width:16,height:10,display:'inline-block',borderRadius:2,background:'repeating-linear-gradient(45deg,currentColor 0,currentColor 2px,transparent 2px,transparent 6px)',opacity:.5}}/>
+                Buffer
+              </span>
+            )}
+            <span className="muted" style={{fontSize:12,display:'flex',alignItems:'center',gap:5}}><span className="dot" style={{background:'var(--primary)'}}/>Pending</span>
+            <span className="muted" style={{fontSize:12,display:'flex',alignItems:'center',gap:5}}><span className="dot" style={{background:'var(--success)'}}/>Completed</span>
+            <span className="muted" style={{fontSize:12,display:'flex',alignItems:'center',gap:5}}><span className="dot" style={{background:'var(--destructive)'}}/>Cancelled</span>
+          </div>
+        </div>
+
+        {view==='month' && <MonthView cursor={cursor} role={role} setView={setView} setCursor={setCursor} openDetail={openDetail}/>}
+        {view==='week'  && <WeekView  cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt}/>}
+        {view==='day'   && <DayView   cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt}/>}
+      </div>
+
+      {createAt && (
+        <div className="modal-bg" onClick={()=>setCreateAt(null)}>
+          <div className="modal" style={{maxWidth:380}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-h">
+              <h2 style={{fontSize:17}}>New booking</h2>
+              <button className="icon-btn" onClick={()=>setCreateAt(null)}><Icon name="x"/></button>
+            </div>
+            <div className="modal-b" style={{display:'flex',flexDirection:'column',gap:12}}>
+              <div style={{padding:14,background:'var(--accent)',borderRadius:10,display:'flex',gap:12,alignItems:'center'}}>
+                <Icon name="calendar" size={20}/>
+                <div>
+                  <div style={{fontWeight:700,fontSize:14}}>{createAt.date}</div>
+                  <div style={{fontSize:13,color:'var(--muted-foreground)',marginTop:2}}>{createAt.time} – {createAt.endTime}</div>
+                </div>
+              </div>
+              <div style={{fontSize:13,color:'var(--muted-foreground)',lineHeight:1.5}}>Open the full form to add client, service, and technician details.</div>
+            </div>
+            <div className="modal-f">
+              <button className="btn btn-outline" onClick={()=>setCreateAt(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={()=>{setCreateAt(null);onAdd();}}><Icon name="plus" size={14}/>Open booking form</button>
+            </div>
+          </div>
         </div>
       )}
-      <div className="day-grid">
-        {slots.map(slot => {
-          const slotEvents = events.filter(e => e.time === slot);
-          return (
-            <React.Fragment key={slot}>
-              <div className="day-cell" style={{background:'var(--muted)', fontSize:12, fontWeight:600, color:'var(--muted-foreground)'}}>{slot}</div>
-              <div className="day-cell">
-                {slotEvents.length === 0 ? <span className="muted" style={{fontSize:12}}>—</span> :
-                  slotEvents.map((ev,i) => (
-                    <div key={ev.id} className={`day-event ${i===1?'conflict':''}`} onClick={()=>openDetail(ev)}>
-                      <h4>{ev.client} · <span style={{fontWeight:500, color:'var(--muted-foreground)'}}>{ev.id}</span></h4>
-                      <p>{ev.service} · {ev.tech.name} · {ev.address}</p>
-                    </div>
-                  ))
-                }
-              </div>
-            </React.Fragment>
-          );
-        })}
-      </div>
     </div>
   );
 };
@@ -1805,7 +1972,7 @@ function App() {
   else if (clientDetail) content = <ClientDetail client={clientDetail} onClose={()=>setClientDetail(null)} openCpm={p=>{setCpmDetail(p);}}/>;
   else if (tenantDetail) content = <TenantDetail tenant={tenantDetail} onClose={()=>setTenantDetail(null)}/>;
   else if (route === 'home') content = <HomeDashboard role={role} go={go}/>;
-  else if (route === 'calendar') content = <Calendar go={go} openDetail={setDetail}/>;
+  else if (route === 'calendar') content = <Calendar role={role} go={go} openDetail={setDetail} onAdd={()=>setShowAdd(true)}/>;
   else if (route === 'requests' || route === 'my_requests') content = <RequestsList openDetail={setDetail} openAdd={()=>setShowAdd(true)} query={query}/>;
   else if (route === 'technicians') content = <TechList openTech={setTechDetail}/>;
   else if (route === 'clients') content = <ClientsList openClient={setClientDetail}/>;
