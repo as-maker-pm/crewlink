@@ -1049,7 +1049,14 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
 
 /* ---------- Company Threads Panel (right sidebar, like AvailSidebar) ---------- */
 const CompanyThreadsPanel = ({ role, onClose }) => {
-  const [activeCompany, setActiveCompany] = useState(CLIENTS[0].id);
+  const isAdmin = role.key === 'super_admin' || role.key === 'admin';
+
+  // admins see all companies; dispatchers only see their own
+  const visibleClients = isAdmin
+    ? CLIENTS
+    : CLIENTS.filter(c => CPMS.some(cpm => cpm.clientId === c.id && cpm.name === role.user));
+
+  const [activeCompany, setActiveCompany] = useState((visibleClients[0] || CLIENTS[0]).id);
   const company = CLIENTS.find(c => c.id === activeCompany);
 
   const companyUsers = [
@@ -1074,33 +1081,32 @@ const CompanyThreadsPanel = ({ role, onClose }) => {
         <button className="icon-btn" onClick={onClose}><Icon name="x" size={15}/></button>
       </div>
 
-      {/* Company tabs — scrollable row */}
-      <div style={{padding:'8px 12px',borderBottom:'1px solid var(--border)',flexShrink:0,overflowX:'auto'}}>
-        <div style={{display:'flex',gap:6,minWidth:'max-content'}}>
-          {CLIENTS.map(c => {
-            const count = (SEED_COMPANY_THREADS[c.id]||[]).reduce((a,t)=>a+1+t.replies.length,0);
-            const active = activeCompany === c.id;
-            return (
-              <button key={c.id} onClick={()=>setActiveCompany(c.id)}
-                style={{padding:'5px 11px',borderRadius:7,border:'1px solid',fontSize:12,fontWeight:600,
-                  cursor:'pointer',whiteSpace:'nowrap',
-                  background:active?'var(--primary)':'transparent',
-                  color:active?'#fff':'var(--muted-foreground)',
-                  borderColor:active?'var(--primary)':'var(--border)'}}>
-                {c.name.split(' ').slice(0,2).join(' ')}
-                {count > 0 && <span style={{marginLeft:5,fontSize:10,opacity:.85}}>({count})</span>}
-              </button>
-            );
-          })}
+      {/* Company tabs — only shown when user has access to multiple */}
+      {visibleClients.length > 1 && (
+        <div style={{padding:'8px 12px',borderBottom:'1px solid var(--border)',flexShrink:0,overflowX:'auto'}}>
+          <div style={{display:'flex',gap:6,minWidth:'max-content'}}>
+            {visibleClients.map(c => {
+              const count = (SEED_COMPANY_THREADS[c.id]||[]).reduce((a,t)=>a+1+t.replies.length,0);
+              const active = activeCompany === c.id;
+              return (
+                <button key={c.id} onClick={()=>setActiveCompany(c.id)}
+                  style={{padding:'5px 11px',borderRadius:7,border:'1px solid',fontSize:12,fontWeight:600,
+                    cursor:'pointer',whiteSpace:'nowrap',
+                    background:active?'var(--primary)':'transparent',
+                    color:active?'#fff':'var(--muted-foreground)',
+                    borderColor:active?'var(--primary)':'var(--border)'}}>
+                  {c.name.split(' ').slice(0,2).join(' ')}
+                  {count > 0 && <span style={{marginLeft:5,fontSize:10,opacity:.85}}>({count})</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Company info strip */}
+      {/* Company name strip */}
       <div style={{padding:'8px 16px',background:'var(--muted)',borderBottom:'1px solid var(--border)',flexShrink:0}}>
         <div style={{fontWeight:600,fontSize:13}}>{company.name}</div>
-        <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>
-          {CPMS.filter(c=>c.clientId===activeCompany).map(c=>c.name).join(' · ') || 'No dispatchers'}
-        </div>
       </div>
 
       {/* Scrollable thread */}
