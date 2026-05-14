@@ -918,7 +918,9 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
           <button className={view==='week'?'active':''} onClick={()=>setView('week')}>Week</button>
           <button className={view==='day'?'active':''} onClick={()=>setView('day')}>Day</button>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={onAdd}><Icon name="plus" size={14}/>New Booking</button>
+        {role.key!=='tech' && (
+          <button className="btn btn-primary btn-sm" onClick={onAdd}><Icon name="plus" size={14}/>New Booking</button>
+        )}
       </div>
 
       {/* Calendar grid — fills remaining height, row layout for optional sidebar */}
@@ -946,19 +948,20 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
               <Icon name="clock" size={14}/>
               <span style={{fontSize:13,fontWeight:600}}>{createAt.time} – {createAt.endTime}</span>
             </div>
-            {role.key==='tech' && (
-              <button className="btn btn-outline" style={{width:'100%',justifyContent:'center',marginBottom:8,borderColor:'rgba(239,68,68,0.4)',color:'var(--destructive)'}}
+            {role.key==='tech' ? (
+              <button className="btn btn-outline" style={{width:'100%',justifyContent:'center',borderColor:'rgba(239,68,68,0.4)',color:'var(--destructive)'}}
                 onClick={()=>{
                   setBlocks(bs=>[...bs,{id:`tb${Date.now()}`,date:createAt.date,allDay:false,start:createAt.time,end:createAt.endTime,reason:''}]);
                   setCreateAt(null);
                 }}>
                 <Icon name="x" size={14}/>Block this time
               </button>
+            ) : (
+              <button className="btn btn-primary" style={{width:'100%',justifyContent:'center'}}
+                onClick={()=>{setCreateAt(null);onAdd();}}>
+                <Icon name="plus" size={14}/>Create booking
+              </button>
             )}
-            <button className="btn btn-primary" style={{width:'100%',justifyContent:'center'}}
-              onClick={()=>{setCreateAt(null);onAdd();}}>
-              <Icon name="plus" size={14}/>Create booking
-            </button>
           </div>
         </div>
       )}
