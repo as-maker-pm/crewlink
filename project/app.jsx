@@ -1084,15 +1084,19 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
       <div className="card" style={{marginBottom:20,padding:'20px 24px'}}>
         <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
           <div>
-            <div style={{marginBottom:10}}>{statusBadge(req.status)}</div>
-            <h2 style={{fontSize:22,fontWeight:800,margin:0,lineHeight:1.15}}>{req.service}</h2>
-            <div className="muted" style={{fontSize:13,marginTop:6,display:'flex',alignItems:'center',gap:5}}>
-              <Icon name="pin" size={12}/>{req.address}
-              <span style={{opacity:.4}}>·</span>
-              <span style={{fontWeight:600,letterSpacing:'.02em'}}>{req.id}</span>
-            </div>
-            <div className="muted" style={{fontSize:12,marginTop:8,display:'flex',alignItems:'center',gap:4}}>
-              <Icon name="clock" size={11}/>Created {req.created}
+            <div style={{marginBottom:12}}>{statusBadge(req.status)}</div>
+            <h2 style={{fontSize:22,fontWeight:800,margin:0,lineHeight:1.2}}>{req.service}</h2>
+            <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:6}}>
+              <div style={{display:'flex',alignItems:'center',gap:7,fontSize:13}}>
+                <span style={{color:'var(--foreground)',opacity:.45,flexShrink:0,display:'flex'}}><Icon name="pin" size={13}/></span>
+                <span style={{color:'var(--muted-foreground)'}}>{req.address}</span>
+                <span style={{color:'var(--border)',margin:'0 1px'}}>·</span>
+                <span style={{color:'var(--muted-foreground)',fontWeight:600,fontSize:12}}>{req.id}</span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:7,fontSize:13}}>
+                <span style={{color:'var(--foreground)',opacity:.45,flexShrink:0,display:'flex'}}><Icon name="clock" size={13}/></span>
+                <span style={{color:'var(--muted-foreground)'}}>Created {req.created}</span>
+              </div>
             </div>
           </div>
           <div style={{textAlign:'right',flexShrink:0}}>
