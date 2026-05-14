@@ -72,12 +72,12 @@ const BrandMark = ({ collapsed }) => (
 
 /* ---------- Mock Data ---------- */
 const TECHS = [
-  { id:'t1', name:'Marcus Chen',   spec:'Solar PV', city:'Austin, TX', phone:'(512) 555-0142', email:'marcus@crew.io', status:'Active',  jobs:42, rating:4.9 },
-  { id:'t2', name:'Priya Patel',   spec:'Roof Survey', city:'Houston, TX', phone:'(713) 555-0183', email:'priya@crew.io', status:'Active', jobs:38, rating:4.8 },
-  { id:'t3', name:'Diego Ramirez', spec:'Battery + PV', city:'Dallas, TX', phone:'(214) 555-0117', email:'diego@crew.io', status:'On leave', jobs:51, rating:4.7 },
-  { id:'t4', name:'Sarah O\'Brien',spec:'Site Inspector', city:'San Antonio, TX', phone:'(210) 555-0166', email:'sarah@crew.io', status:'Active', jobs:29, rating:4.9 },
-  { id:'t5', name:'Yuki Tanaka',   spec:'Solar PV', city:'Austin, TX', phone:'(512) 555-0177', email:'yuki@crew.io', status:'Active', jobs:33, rating:4.6 },
-  { id:'t6', name:'Wesley Adebayo',spec:'Commercial', city:'Dallas, TX', phone:'(214) 555-0192', email:'wesley@crew.io', status:'Inactive', jobs:18, rating:4.5 },
+  { id:'t1', name:'Marcus Chen',   spec:'Solar PV', city:'Austin, TX', phone:'(512) 555-0142', email:'marcus@crew.io', status:'Active',  jobs:42 },
+  { id:'t2', name:'Priya Patel',   spec:'Roof Survey', city:'Houston, TX', phone:'(713) 555-0183', email:'priya@crew.io', status:'Active', jobs:38 },
+  { id:'t3', name:'Diego Ramirez', spec:'Battery + PV', city:'Dallas, TX', phone:'(214) 555-0117', email:'diego@crew.io', status:'On leave', jobs:51 },
+  { id:'t4', name:'Sarah O\'Brien',spec:'Site Inspector', city:'San Antonio, TX', phone:'(210) 555-0166', email:'sarah@crew.io', status:'Active', jobs:29 },
+  { id:'t5', name:'Yuki Tanaka',   spec:'Solar PV', city:'Austin, TX', phone:'(512) 555-0177', email:'yuki@crew.io', status:'Active', jobs:33 },
+  { id:'t6', name:'Wesley Adebayo',spec:'Commercial', city:'Dallas, TX', phone:'(214) 555-0192', email:'wesley@crew.io', status:'Inactive', jobs:18 },
 ];
 
 const CLIENTS = [
@@ -438,7 +438,6 @@ const AdminHome = ({ go, role }) => (
               </div>
               <div style={{textAlign:'right'}}>
                 <div style={{fontWeight:700, fontSize:14}}>{t.jobs} <span className="muted" style={{fontWeight:400, fontSize:11}}>jobs</span></div>
-                <div style={{color:'var(--warning)', fontSize:12, fontWeight:600}}>★ {t.rating}</div>
               </div>
             </div>
           ))}
@@ -508,7 +507,6 @@ const TechHome = ({ go }) => {
         <Stat label="Jobs today" value="4" icon="calendar"/>
         <Stat label="Jobs this week" value="18" delta="+2" icon="clipboard" iconColor="green"/>
         <Stat label="Completed (mo)" value="42" icon="check" iconColor="gold"/>
-        <Stat label="Avg rating" value="4.9" icon="sparkle" iconColor="gold"/>
       </div>
       <div className="card">
         <div className="card-h"><h3>Today's Route</h3><button className="btn btn-outline btn-sm"><Icon name="map" size={14}/>View on map</button></div>
@@ -1185,9 +1183,7 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:700,fontSize:15}}>{req.tech.name}</div>
                 <div className="muted" style={{fontSize:12,marginTop:2}}>{req.tech.spec}</div>
-                <div style={{color:'var(--warning)',fontSize:12,fontWeight:600,marginTop:4}}>
-                  ★ {req.tech.rating} &nbsp;·&nbsp; {req.tech.jobs} jobs
-                </div>
+                <div className="muted" style={{fontSize:12,marginTop:4}}>{req.tech.jobs} jobs completed</div>
               </div>
             </div>
             <div style={{borderTop:'1px solid var(--border)',paddingTop:12,display:'flex',flexDirection:'column',gap:8}}>
@@ -1378,7 +1374,7 @@ const AddRequestModal = ({ onClose, onSave }) => {
                       <div className="avatar-md">{t.name.split(' ').map(n=>n[0]).join('')}</div>
                       <div style={{flex:1, minWidth:0}}>
                         <div style={{fontSize:13, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{t.name}</div>
-                        <div className="muted" style={{fontSize:11}}>{t.spec} · ★ {t.rating}</div>
+                        <div className="muted" style={{fontSize:11}}>{t.spec}</div>
                       </div>
                     </div>
                   ))}
@@ -1450,7 +1446,6 @@ const TechList = ({ openTech }) => {
               <div className="divider"/>
               <div style={{display:'flex', justifyContent:'space-between', fontSize:12}} className="muted">
                 <span><Icon name="pin" size={12}/> {t.city}</span>
-                <span style={{color:'var(--warning)', fontWeight:600}}>★ {t.rating}</span>
               </div>
               <div style={{display:'flex', gap:14, marginTop:10, fontSize:12}} className="muted">
                 <span><strong style={{color:'var(--foreground)'}}>{t.jobs}</strong> jobs</span>
@@ -1462,7 +1457,7 @@ const TechList = ({ openTech }) => {
         :
         <div className="card" style={{padding:0, overflow:'hidden'}}>
           <table className="tbl">
-            <thead><tr><th>Name</th><th>Specialization</th><th>Region</th><th>Status</th><th>Jobs</th><th>Rating</th></tr></thead>
+            <thead><tr><th>Name</th><th>Specialization</th><th>Region</th><th>Status</th><th>Jobs</th></tr></thead>
             <tbody>{TECHS.map(t => (
               <tr key={t.id} onClick={()=>openTech(t)}>
                 <td style={{fontWeight:600}}><div className="row"><div className="avatar-sm">{t.name.split(' ').map(n=>n[0]).join('')}</div>{t.name}</div></td>
@@ -1470,7 +1465,6 @@ const TechList = ({ openTech }) => {
                 <td className="muted">{t.city}</td>
                 <td>{statusBadge(t.status)}</td>
                 <td>{t.jobs}</td>
-                <td style={{color:'var(--warning)', fontWeight:600}}>★ {t.rating}</td>
               </tr>
             ))}</tbody>
           </table>
@@ -1497,7 +1491,6 @@ const TechDetail = ({ tech, onClose, openDetail }) => {
             <div className="stats" style={{marginBottom:0}}>
               <Stat label="Jobs total" value={tech.jobs} icon="clipboard"/>
               <Stat label="Completed" value={Math.floor(tech.jobs*0.85)} icon="check" iconColor="green"/>
-              <Stat label="Rating" value={`★ ${tech.rating}`} icon="sparkle" iconColor="gold"/>
               <Stat label="On time" value="94%" icon="clock"/>
             </div>
           </div>
