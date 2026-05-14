@@ -270,11 +270,6 @@ const Header = ({ role, setRole, theme, setTheme, onAdd, onSearch, query, onSign
           ))}
         </nav>
       </div>
-      <div className="search">
-        <Icon name="search" size={16}/>
-        <input value={query} onChange={e=>onSearch(e.target.value)} placeholder="Search…"/>
-        <span className="muted" style={{fontSize:11,padding:'2px 6px',border:'1px solid var(--border)',borderRadius:5}}>⌘K</span>
-      </div>
       <button className="btn btn-primary" onClick={onAdd}><Icon name="plus" size={16}/>New Survey Request</button>
       <button className="icon-btn" onClick={() => setTheme(theme==='light'?'dark':'light')} title="Toggle theme">
         <Icon name={theme==='light'?'moon':'sun'}/>
@@ -982,13 +977,34 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
 };
 
 /* ---------- REQUESTS ---------- */
-const RequestsList = ({ openDetail, openAdd, query }) => {
-  const [filter, setFilter] = useState('All');
-  const [sort, setSort] = useState('date');
+const RequestsList = ({ openDetail, openAdd }) => {
+  const [filter, setFilter]           = useState('All');
+  const [sort, setSort]               = useState('date');
+  const [query, setQuery]             = useState('');
+  const [selected, setSelected]       = useState(new Set());
+  const [filterService, setFilterService]       = useState('All');
+  const [filterTech, setFilterTech]             = useState('All');
+  const [filterDispatcher, setFilterDispatcher] = useState('All');
+
+  const fmt12 = t => { const [h,m]=t.split(':').map(Number); const h12=h===0?12:h>12?h-12:h; return `${h12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`; };
 
   const filtered = REQUESTS
     .filter(r => filter==='All' || r.status===filter)
-    .filter(r => !query || (r.id+r.client+r.service+r.tech.name).toLowerCase().includes(query.toLowerCase()));
+    .filter(r => filterService==='All' || r.service===filterService)
+    .filter(r => filterTech==='All' || r.tech.name===filterTech)
+    .filter(r => filterDispatcher==='All' || (r.cpm?.name||'')=== filterDispatcher)
+    .filter(r => !query || (r.id+r.client+(r.homeownerName||'')+r.service+r.tech.name+(r.cpm?.name||'')+r.email).toLowerCase().includes(query.toLowerCase()))
+    .sort((a,b) => sort==='client'?a.client.localeCompare(b.client):sort==='status'?a.status.localeCompare(b.status):a.date.localeCompare(b.date));
+
+  const allSelected = filtered.length > 0 && filtered.every(r => selected.has(r.id));
+  const toggleAll = () => {
+    if (allSelected) setSelected(s => { const n=new Set(s); filtered.forEach(r=>n.delete(r.id)); return n; });
+    else             setSelected(s => { const n=new Set(s); filtered.forEach(r=>n.add(r.id)); return n; });
+  };
+  const toggleOne = (id, e) => { e.stopPropagation(); setSelected(s => { const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; }); };
+
+  const techNames = [...new Set(TECHS.map(t=>t.name))];
+  const dispNames = [...new Set(CPMS.map(c=>c.name))];
 
   return (
     <div>
@@ -999,38 +1015,97 @@ const RequestsList = ({ openDetail, openAdd, query }) => {
         </>}
       />
 
-      <div className="card flat" style={{padding:'10px 14px', marginBottom:14, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap'}}>
+      <div className="card flat" style={{padding:'10px 14px', marginBottom:14, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
         <div className="seg">
           {['All',...STATUSES].map(s => <button key={s} className={filter===s?'active':''} onClick={()=>setFilter(s)}>{s}</button>)}
         </div>
         <span className="spacer"/>
+        <div style={{display:'flex',alignItems:'center',gap:6,border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',background:'var(--card)',minWidth:190}}>
+          <Icon name="search" size={13} style={{color:'var(--muted-foreground)',flexShrink:0}}/>
+          <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search requests…"
+            style={{border:'none',outline:'none',background:'transparent',fontSize:12,width:'100%',color:'var(--foreground)'}}/>
+        </div>
         <span className="muted" style={{fontSize:12}}>Sort by</span>
-        <select className="input" style={{width:140}} value={sort} onChange={e=>setSort(e.target.value)}>
+        <select className="input" style={{width:110}} value={sort} onChange={e=>setSort(e.target.value)}>
           <option value="date">Date</option>
           <option value="client">Client</option>
           <option value="status">Status</option>
         </select>
+        <select className="input" style={{width:138}} value={filterService} onChange={e=>setFilterService(e.target.value)}>
+          <option value="All">All Services</option>
+          {SERVICES.map(s=><option key={s} value={s}>{s}</option>)}
+        </select>
+        <select className="input" style={{width:148}} value={filterTech} onChange={e=>setFilterTech(e.target.value)}>
+          <option value="All">All Technicians</option>
+          {techNames.map(n=><option key={n} value={n}>{n}</option>)}
+        </select>
+        <select className="input" style={{width:148}} value={filterDispatcher} onChange={e=>setFilterDispatcher(e.target.value)}>
+          <option value="All">All Dispatchers</option>
+          {dispNames.map(n=><option key={n} value={n}>{n}</option>)}
+        </select>
       </div>
+
+      {selected.size > 0 && (
+        <div style={{padding:'8px 14px',marginBottom:10,background:'var(--accent)',border:'1px solid var(--border)',borderRadius:8,display:'flex',alignItems:'center',gap:10,fontSize:12}}>
+          <span style={{fontWeight:600,color:'var(--primary)'}}>{selected.size} selected</span>
+          <span className="spacer"/>
+          <button className="btn btn-outline" style={{fontSize:11,padding:'3px 10px'}}>Reassign Technician</button>
+          <button className="btn btn-outline" style={{fontSize:11,padding:'3px 10px'}}>Export Selected</button>
+          <button className="btn btn-outline" style={{fontSize:11,padding:'3px 10px',color:'var(--destructive)',borderColor:'var(--destructive)'}} onClick={()=>setSelected(new Set())}>Clear</button>
+        </div>
+      )}
 
       <div className="card" style={{padding:0, overflow:'hidden'}}>
         <table className="tbl">
           <thead><tr>
-            <th>ID</th><th>Client</th><th>Service</th><th>Address</th><th>Technician</th><th>Status</th><th>Priority</th><th>Date</th><th></th>
+            <th style={{width:36,paddingLeft:14,paddingRight:4}}>
+              <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{cursor:'pointer',accentColor:'var(--primary)'}}/>
+            </th>
+            <th>ID</th>
+            <th>Client</th>
+            <th>Service</th>
+            <th>Technician</th>
+            <th>Dispatcher</th>
+            <th>Status</th>
+            <th>Time Booked</th>
+            <th></th>
           </tr></thead>
           <tbody>
-            {filtered.map(r => (
-              <tr key={r.id} onClick={()=>openDetail(r)}>
-                <td style={{fontWeight:700, color:'var(--primary)'}}>{r.id}</td>
-                <td style={{fontWeight:600}}>{r.client}</td>
-                <td><span className="muted">{r.service}</span></td>
-                <td className="muted" style={{maxWidth:240, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{r.address}</td>
-                <td><div className="row"><div className="avatar-sm">{r.tech.name.split(' ').map(n=>n[0]).join('')}</div>{r.tech.name}</div></td>
-                <td>{statusBadge(r.status)}</td>
-                <td>{statusBadge(r.priority)}</td>
-                <td className="muted">{r.date} · {r.time}</td>
-                <td><Icon name="dots" size={16}/></td>
-              </tr>
-            ))}
+            {filtered.map(r => {
+              const endTime = addMinutes(r.time, r.slotMinutes||60);
+              const isSel = selected.has(r.id);
+              return (
+                <tr key={r.id} onClick={()=>openDetail(r)} style={{background:isSel?'var(--accent)':''}}>
+                  <td style={{paddingLeft:14,paddingRight:4}} onClick={e=>toggleOne(r.id,e)}>
+                    <input type="checkbox" checked={isSel} onChange={()=>{}} style={{cursor:'pointer',accentColor:'var(--primary)'}}/>
+                  </td>
+                  <td style={{fontWeight:700, color:'var(--primary)'}}>{r.id}</td>
+                  <td>
+                    <div style={{fontWeight:600,fontSize:13,lineHeight:1.3}}>{r.client}</div>
+                    <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:2}}>{r.homeownerName}</div>
+                    <div style={{fontSize:11,color:'var(--muted-foreground)'}}>{r.email}</div>
+                  </td>
+                  <td><span className="muted" style={{fontSize:12}}>{r.service}</span></td>
+                  <td>
+                    <div className="row">
+                      <div className="avatar-sm">{r.tech.name.split(' ').map(n=>n[0]).join('')}</div>
+                      <span style={{fontSize:13}}>{r.tech.name}</span>
+                    </div>
+                  </td>
+                  <td>
+                    {r.cpm
+                      ? <div><div style={{fontSize:13,fontWeight:500}}>{r.cpm.name}</div><div style={{fontSize:11,color:'var(--muted-foreground)'}}>{r.cpm.role}</div></div>
+                      : <span className="muted">—</span>}
+                  </td>
+                  <td>{statusBadge(r.status)}</td>
+                  <td>
+                    <div style={{fontSize:12,fontWeight:500}}>{r.date}</div>
+                    <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:2}}>{fmt12(r.time)} – {fmt12(endTime)}</div>
+                  </td>
+                  <td><Icon name="dots" size={16}/></td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -2401,7 +2476,7 @@ function App() {
   else if (tenantDetail) content = <TenantDetail tenant={tenantDetail} onClose={()=>setTenantDetail(null)}/>;
   else if (route === 'home') content = <HomeDashboard role={role} go={go}/>;
   else if (route === 'calendar') content = <Calendar role={role} go={go} openDetail={setDetail} onAdd={()=>setShowAdd(true)}/>;
-  else if (route === 'requests' || route === 'my_requests') content = <RequestsList openDetail={setDetail} openAdd={()=>setShowAdd(true)} query={query}/>;
+  else if (route === 'requests' || route === 'my_requests') content = <RequestsList openDetail={setDetail} openAdd={()=>setShowAdd(true)}/>;
   else if (route === 'technicians') content = <TechList openTech={setTechDetail}/>;
   else if (route === 'clients') content = <ClientsList openClient={setClientDetail}/>;
   else if (route === 'tenants') content = <TenantsList openTenant={setTenantDetail}/>;
