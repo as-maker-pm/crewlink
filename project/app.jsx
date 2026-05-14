@@ -2147,59 +2147,61 @@ const AvailSidebar = ({ schedule, setSchedule, blocks, setBlocks }) => {
   const LABEL = {fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em',color:'var(--muted-foreground)'};
 
   return (
-    <div style={{width:260,flexShrink:0,borderLeft:'1px solid var(--border)',display:'flex',flexDirection:'column',background:'var(--card)',overflow:'hidden'}}>
+    <div style={{width:320,flexShrink:0,borderLeft:'1px solid var(--border)',display:'flex',flexDirection:'column',background:'var(--card)',overflow:'hidden'}}>
       {/* Header */}
-      <div style={{padding:'0 14px',height:46,display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid var(--border)',flexShrink:0}}>
-        <span style={{fontSize:13,fontWeight:700,display:'flex',alignItems:'center',gap:7}}>
-          <Icon name="clock" size={14}/>My Availability
+      <div style={{padding:'0 18px',height:46,display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid var(--border)',flexShrink:0}}>
+        <span style={{fontSize:14,fontWeight:700,display:'flex',alignItems:'center',gap:8}}>
+          <Icon name="clock" size={15}/>My Availability
         </span>
-        <button className={`btn btn-sm ${editMode?'btn-primary':'btn-outline'}`} style={{padding:'4px 10px'}}
+        <button className={`btn btn-sm ${editMode?'btn-primary':'btn-outline'}`}
           onClick={()=>setEditMode(v=>!v)}>
-          {editMode ? 'Done' : <><Icon name="edit" size={12}/>Edit hours</>}
+          {editMode ? 'Done' : <><Icon name="edit" size={13}/>Edit hours</>}
         </button>
       </div>
 
       {/* Scrollable body */}
-      <div style={{flex:1,overflowY:'auto',padding:'0'}}>
+      <div style={{flex:1,overflowY:'auto'}}>
 
         {/* Weekly schedule */}
-        <div style={{padding:'10px 14px 6px',borderBottom:'2px solid var(--border)'}}>
-          <div style={{...LABEL,marginBottom:8}}>Weekly Schedule</div>
+        <div style={{padding:'14px 18px',borderBottom:'2px solid var(--border)'}}>
+          <div style={{...LABEL,marginBottom:12}}>Weekly Schedule</div>
           {DAYS_OF_WEEK.map(day=>{
             const d=schedule[day];
             return (
-              <div key={day} style={{...ROW,paddingBottom:editMode&&d.enabled?8:0}}>
+              <div key={day} style={{...ROW,paddingBottom:editMode&&d.enabled?10:0}}>
                 {/* Day header */}
-                <div style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0'}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 0'}}>
                   <Toggle on={d.enabled} onChange={()=>toggleDay(day)}/>
-                  <span style={{fontSize:12,fontWeight:600,width:32,
+                  <span style={{fontSize:13,fontWeight:600,width:38,
                     color:d.enabled?'var(--foreground)':'var(--muted-foreground)'}}>
                     {DAY_LABEL[day].slice(0,3)}
                   </span>
                   {!editMode && (
-                    <span style={{fontSize:11,color:d.enabled?'var(--foreground)':'var(--muted-foreground)',flex:1}}>
+                    <span style={{fontSize:12,color:d.enabled?'var(--foreground)':'var(--muted-foreground)',flex:1}}>
                       {d.enabled&&d.slots.length
-                        ? d.slots.map(sl=>`${fmt12(sl.start)}–${fmt12(sl.end)}`).join(', ')
+                        ? d.slots.map(sl=>`${fmt12(sl.start)} – ${fmt12(sl.end)}`).join(', ')
                         : 'Unavailable'}
                     </span>
                   )}
                 </div>
                 {/* Edit slots */}
                 {editMode && d.enabled && (
-                  <div style={{paddingLeft:40,paddingBottom:6,display:'flex',flexDirection:'column',gap:5}}>
+                  <div style={{paddingLeft:48,paddingBottom:8,display:'flex',flexDirection:'column',gap:7}}>
                     {d.slots.map((sl,i)=>(
-                      <div key={i} style={{display:'flex',alignItems:'center',gap:4}}>
+                      <div key={i} style={{display:'flex',alignItems:'center',gap:6}}>
                         <TimeSelect value={sl.start} onChange={v=>updateSlot(day,i,'start',v)} style={{flex:1}}/>
-                        <span style={{fontSize:11,color:'var(--muted-foreground)'}}>–</span>
+                        <span style={{fontSize:12,color:'var(--muted-foreground)',flexShrink:0}}>–</span>
                         <TimeSelect value={sl.end}   onChange={v=>updateSlot(day,i,'end',v)}   style={{flex:1}}/>
-                        {d.slots.length>1&&<button className="icon-btn" style={{width:22,height:22}}
-                          onClick={()=>removeSlot(day,i)}><Icon name="x" size={10}/></button>}
+                        {d.slots.length>1 && (
+                          <button className="icon-btn" style={{width:26,height:26,flexShrink:0}}
+                            onClick={()=>removeSlot(day,i)}><Icon name="x" size={12}/></button>
+                        )}
                       </div>
                     ))}
                     <button onClick={()=>addSlot(day)}
                       style={{background:'none',border:'none',padding:0,color:'var(--primary)',
-                        fontSize:11,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
-                      <Icon name="plus" size={10}/>Add range
+                        fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+                      <Icon name="plus" size={12}/>Add time range
                     </button>
                   </div>
                 )}
@@ -2209,21 +2211,21 @@ const AvailSidebar = ({ schedule, setSchedule, blocks, setBlocks }) => {
         </div>
 
         {/* Blocked times */}
-        <div style={{padding:'10px 14px'}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+        <div style={{padding:'14px 18px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
             <span style={LABEL}>Blocked Times</span>
-            <button className="btn btn-primary btn-sm" style={{padding:'3px 9px',fontSize:11}}
+            <button className="btn btn-primary btn-sm"
               onClick={()=>setShowModal(true)}>
-              <Icon name="plus" size={11}/>Block
+              <Icon name="plus" size={12}/>Block time
             </button>
           </div>
           {blocks.length===0
-            ? <p style={{fontSize:11,color:'var(--muted-foreground)',margin:'8px 0'}}>None — drag on the calendar to block a time.</p>
+            ? <p style={{fontSize:12,color:'var(--muted-foreground)',margin:'8px 0',lineHeight:1.5}}>None — drag on the calendar to block a slot.</p>
             : [...blocks].sort((a,b)=>a.date.localeCompare(b.date)).map(bl=>(
-              <div key={bl.id} style={{...ROW,display:'flex',alignItems:'flex-start',gap:8,padding:'7px 0'}}>
+              <div key={bl.id} style={{...ROW,display:'flex',alignItems:'flex-start',gap:10,padding:'10px 0'}}>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:12,fontWeight:600}}>{fmtDate(bl.date)}</div>
-                  <div style={{fontSize:11,color:'var(--muted-foreground)'}}>
+                  <div style={{fontSize:13,fontWeight:600}}>{fmtDate(bl.date)}</div>
+                  <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>
                     {bl.allDay?'All day':`${fmt12(bl.start)} – ${fmt12(bl.end)}`}
                     {bl.reason&&<span> · {bl.reason}</span>}
                   </div>
