@@ -1400,8 +1400,9 @@ const RequestsList = ({ openDetail, openAdd, role }) => {
                   <td style={{fontWeight:700, color:'var(--primary)'}}>{r.id}</td>
                   <td>
                     <div style={{fontWeight:600,fontSize:13,lineHeight:1.3}}>{r.client}</div>
-                    <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:2}}>{r.homeownerName}</div>
-                    <div style={{fontSize:11,color:'var(--muted-foreground)'}}>{r.email}</div>
+                    <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:220}}>
+                      {r.homeownerName} · {r.email}
+                    </div>
                   </td>
                   <td><span className="muted" style={{fontSize:12}}>{r.service}</span></td>
                   <td><span style={{fontSize:13}}>{r.tech.name}</span></td>
