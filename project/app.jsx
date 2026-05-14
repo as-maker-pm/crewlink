@@ -48,6 +48,8 @@ const Icon = ({ name, size=18 }) => {
     bookmark: <><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></>,
     pin2: <><path d="M12 17v5M9 10.76V6h6v4.76l3 3.24v2H6v-2z"/></>,
     file: <><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></>,
+    message: <><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></>,
+    at: <><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 006 0v-1a10 10 0 10-3.92 7.94"/></>,
   };
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
@@ -163,6 +165,44 @@ const PLANS = [
   { name:'Pro',      price:149, desc:'For growing solar businesses',    feats:['Up to 50 users','1000 surveys/mo','Advanced calendar','Conflict detection','Priority support','Custom branding'], featured:true },
   { name:'Business', price:399, desc:'Multi-region operations',         feats:['Unlimited users','Unlimited surveys','Multi-tenant','SSO + RBAC','Dedicated success mgr','99.9% SLA'] },
 ];
+
+const TAGGABLE_USERS = [
+  { name:'Alex Kowalski',  initials:'AK', roleKey:'super_admin', roleLabel:'Super Admin' },
+  { name:'Jamie Reyes',    initials:'JR', roleKey:'admin',       roleLabel:'Admin' },
+  { name:'Sam Whitfield',  initials:'SW', roleKey:'cpm',         roleLabel:'Dispatcher' },
+  { name:'Olivia Stewart', initials:'OS', roleKey:'cpm',         roleLabel:'Dispatcher' },
+  { name:'Carlos Mendez',  initials:'CM', roleKey:'cpm',         roleLabel:'Dispatcher' },
+  { name:'Aisha Brown',    initials:'AB', roleKey:'cpm',         roleLabel:'Dispatcher' },
+  { name:'Tyler Quinn',    initials:'TQ', roleKey:'cpm',         roleLabel:'Dispatcher' },
+];
+
+const SEED_COMMENTS = {
+  'SR-1024': [
+    {
+      id:'cmt-1', author:{name:'Olivia Stewart',initials:'OS',roleKey:'cpm'},
+      text:'Homeowner confirmed gate code is 4421. Two dogs on the property — heads up @Marcus Chen before you arrive.',
+      ts:'Oct 14, 10:32 AM', edited:false,
+      replies:[
+        { id:'rpl-1', author:{name:'Jamie Reyes',initials:'JR',roleKey:'admin'}, text:"Thanks @Olivia Stewart — I'll add this to the tech briefing notes.", ts:'Oct 14, 11:05 AM', edited:false },
+      ]
+    },
+    {
+      id:'cmt-2', author:{name:'Alex Kowalski',initials:'AK',roleKey:'super_admin'},
+      text:'Proposal has been signed off. Confirming the Tuesday morning slot is locked in. @Sam Whitfield please make sure dispatch is notified.',
+      ts:'Oct 15, 09:10 AM', edited:false, replies:[]
+    },
+  ],
+  'SR-1025': [
+    {
+      id:'cmt-3', author:{name:'Carlos Mendez',initials:'CM',roleKey:'cpm'},
+      text:'Customer requested early start — 8 AM if possible. @Jamie Reyes can you check tech availability?',
+      ts:'Oct 12, 02:15 PM', edited:false,
+      replies:[
+        { id:'rpl-2', author:{name:'Jamie Reyes',initials:'JR',roleKey:'admin'}, text:'Confirmed — Marcus is available from 7:45. Updated the slot.', ts:'Oct 12, 03:00 PM', edited:false },
+      ]
+    },
+  ],
+};
 
 const BOOKINGS_BY_DATE = (() => {
   const map = {};
@@ -1108,7 +1148,248 @@ const RequestsList = ({ openDetail, openAdd }) => {
   );
 };
 
-const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
+/* ---------- Comments Section ---------- */
+const CommentsSection = ({ reqId, role }) => {
+  const [comments, setComments]         = useState(() => (SEED_COMMENTS[reqId] || []).map(c=>({...c,replies:[...c.replies]})));
+  const [newText, setNewText]           = useState('');
+  const [replyingTo, setReplyingTo]     = useState(null);
+  const [replyText, setReplyText]       = useState('');
+  const [editingId, setEditingId]       = useState(null);
+  const [editText, setEditText]         = useState('');
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionFor, setMentionFor]     = useState(null);
+  const [showMentions, setShowMentions] = useState(false);
+
+  const me = { name: role.user, initials: role.initials, roleKey: role.key };
+
+  const detectMention = (text, field) => {
+    const atIdx = text.lastIndexOf('@');
+    if (atIdx >= 0 && (atIdx === 0 || text[atIdx-1] === ' ')) {
+      const q = text.slice(atIdx + 1);
+      if (/^[a-z ]*$/i.test(q)) { setMentionQuery(q); setMentionFor(field); setShowMentions(true); return; }
+    }
+    setShowMentions(false);
+  };
+
+  const mentionMatches = TAGGABLE_USERS.filter(u =>
+    u.name !== me.name && u.name.toLowerCase().includes(mentionQuery.toLowerCase())
+  );
+
+  const insertMention = (userName) => {
+    const inject = (text, setter) => {
+      const atIdx = text.lastIndexOf('@');
+      setter(text.slice(0, atIdx) + '@' + userName + ' ');
+    };
+    if (mentionFor === 'new')        inject(newText, setNewText);
+    else if (mentionFor === 'reply') inject(replyText, setReplyText);
+    else if (mentionFor === editingId) inject(editText, setEditText);
+    setShowMentions(false);
+  };
+
+  const renderText = (text) =>
+    text.split(/(@[A-Za-z]+ [A-Za-z]+)/g).map((p, i) =>
+      p.startsWith('@')
+        ? <span key={i} style={{color:'var(--primary)',fontWeight:600,background:'var(--accent)',borderRadius:4,padding:'0 3px'}}>{p}</span>
+        : p
+    );
+
+  const nowTs = () => new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+
+  const addComment = () => {
+    if (!newText.trim()) return;
+    setComments(cs => [...cs, {id:'c'+Date.now(), author:me, text:newText.trim(), ts:nowTs(), edited:false, replies:[]}]);
+    setNewText(''); setShowMentions(false);
+  };
+
+  const addReply = (parentId) => {
+    if (!replyText.trim()) return;
+    setComments(cs => cs.map(c => c.id===parentId
+      ? {...c, replies:[...c.replies, {id:'r'+Date.now(), author:me, text:replyText.trim(), ts:nowTs(), edited:false}]}
+      : c));
+    setReplyText(''); setReplyingTo(null); setShowMentions(false);
+  };
+
+  const saveEdit = (isCmt, parentId) => {
+    if (!editText.trim()) return;
+    if (isCmt) setComments(cs => cs.map(c => c.id===editingId ? {...c, text:editText.trim(), edited:true} : c));
+    else       setComments(cs => cs.map(c => c.id===parentId  ? {...c, replies:c.replies.map(r=>r.id===editingId?{...r,text:editText.trim(),edited:true}:r)} : c));
+    setEditingId(null); setShowMentions(false);
+  };
+
+  const deleteComment = (cid) => setComments(cs => cs.filter(c => c.id!==cid));
+  const deleteReply   = (cid,rid) => setComments(cs => cs.map(c => c.id===cid ? {...c, replies:c.replies.filter(r=>r.id!==rid)} : c));
+  const startEdit     = (id, text) => { setEditingId(id); setEditText(text); setShowMentions(false); };
+
+  const totalCount = comments.reduce((a,c) => a + 1 + c.replies.length, 0);
+
+  const Avatar = ({ author, size=30 }) => (
+    <div style={{width:size,height:size,borderRadius:'50%',background:'var(--muted)',color:'var(--foreground)',
+      display:'flex',alignItems:'center',justifyContent:'center',fontSize:size<28?10:11,fontWeight:700,flexShrink:0,
+      border:'1px solid var(--border)'}}>
+      {author.initials}
+    </div>
+  );
+
+  const ActionBtn = ({ label, onClick, danger=false }) => (
+    <button onClick={onClick} style={{background:'none',border:'none',fontSize:11,fontWeight:600,
+      color:'var(--muted-foreground)',cursor:'pointer',padding:0,lineHeight:1}}
+      onMouseEnter={e=>e.currentTarget.style.color=danger?'var(--destructive)':'var(--foreground)'}
+      onMouseLeave={e=>e.currentTarget.style.color='var(--muted-foreground)'}>
+      {label}
+    </button>
+  );
+
+  const MentionDropdown = ({ field }) => (
+    showMentions && mentionFor===field && mentionMatches.length > 0 ? (
+      <div style={{position:'absolute',zIndex:60,top:'calc(100% + 4px)',left:0,minWidth:220,
+        background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,
+        boxShadow:'0 8px 24px rgba(0,0,0,.12)',overflow:'hidden'}}>
+        <div style={{padding:'6px 10px',fontSize:10,fontWeight:700,textTransform:'uppercase',
+          letterSpacing:'.06em',color:'var(--muted-foreground)',borderBottom:'1px solid var(--border)'}}>Tag a person</div>
+        {mentionMatches.map(u => (
+          <div key={u.name} onMouseDown={e=>{e.preventDefault();insertMention(u.name);}}
+            style={{padding:'8px 12px',display:'flex',alignItems:'center',gap:9,cursor:'pointer'}}
+            onMouseEnter={e=>e.currentTarget.style.background='var(--accent)'}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <div style={{width:26,height:26,borderRadius:'50%',background:'var(--muted)',
+              display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,flexShrink:0}}>
+              {u.initials}
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:600}}>{u.name}</div>
+              <div style={{fontSize:10,color:'var(--muted-foreground)'}}>{u.roleLabel}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : null
+  );
+
+  const CommentInput = ({ value, onChange, onSubmit, onCancel, field, placeholder, submitLabel='Comment' }) => (
+    <div style={{position:'relative'}}>
+      <textarea value={value}
+        onChange={e=>{onChange(e.target.value);detectMention(e.target.value,field);}}
+        onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();onSubmit();}if(e.key==='Escape'&&onCancel)onCancel();}}
+        onBlur={()=>setTimeout(()=>setShowMentions(false),150)}
+        placeholder={placeholder||'Add a comment… type @ to tag someone'}
+        rows={2}
+        style={{width:'100%',border:'1px solid var(--border)',borderRadius:8,padding:'8px 10px',fontSize:13,
+          resize:'none',outline:'none',background:'var(--card)',color:'var(--foreground)',
+          fontFamily:'inherit',lineHeight:1.55,boxSizing:'border-box',
+          transition:'border-color .15s'}}
+        onFocus={e=>e.target.style.borderColor='var(--primary)'}
+      />
+      <MentionDropdown field={field}/>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:6}}>
+        <span style={{fontSize:10,color:'var(--muted-foreground)'}}>Press Enter to submit · Shift+Enter for new line · @ to mention</span>
+        <div style={{display:'flex',gap:6}}>
+          {onCancel && <button className="btn btn-outline btn-sm" onClick={onCancel}>Cancel</button>}
+          <button className="btn btn-primary btn-sm" onClick={onSubmit} disabled={!value.trim()}>{submitLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const ReplyThread = ({ c }) => (
+    <div style={{marginLeft:40,paddingLeft:14,borderLeft:'2px solid var(--border)',marginTop:10,display:'flex',flexDirection:'column',gap:12}}>
+      {c.replies.map(r => (
+        <div key={r.id} style={{display:'flex',gap:9}}>
+          <Avatar author={r.author} size={26}/>
+          <div style={{flex:1}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
+              <span style={{fontWeight:700,fontSize:12}}>{r.author.name}</span>
+              <span style={{fontSize:10,color:'var(--muted-foreground)'}}>{r.ts}</span>
+              {r.edited && <span style={{fontSize:9,color:'var(--muted-foreground)',fontStyle:'italic'}}>(edited)</span>}
+            </div>
+            {editingId===r.id
+              ? <CommentInput value={editText} onChange={setEditText} field={r.id}
+                  onSubmit={()=>saveEdit(false,c.id)} onCancel={()=>setEditingId(null)} submitLabel="Save changes"/>
+              : <div style={{fontSize:13,lineHeight:1.6,color:'var(--foreground)'}}>{renderText(r.text)}</div>
+            }
+            {editingId!==r.id && (
+              <div style={{display:'flex',gap:10,marginTop:5}}>
+                {r.author.name===me.name && <>
+                  <ActionBtn label="Edit"   onClick={()=>startEdit(r.id,r.text)}/>
+                  <ActionBtn label="Delete" onClick={()=>deleteReply(c.id,r.id)} danger/>
+                </>}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="card" style={{marginTop:20}}>
+      <div className="card-h">
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <Icon name="message" size={15}/>
+          <h3>Comments</h3>
+          {totalCount > 0 && <span style={{fontSize:11,fontWeight:700,padding:'1px 7px',background:'var(--muted)',borderRadius:99,color:'var(--muted-foreground)'}}>{totalCount}</span>}
+        </div>
+      </div>
+
+      {/* New comment */}
+      <div style={{display:'flex',gap:10,marginBottom:22}}>
+        <Avatar author={me}/>
+        <div style={{flex:1}}>
+          <CommentInput value={newText} onChange={setNewText} onSubmit={addComment} field="new"/>
+        </div>
+      </div>
+
+      {/* Thread list */}
+      {comments.length === 0
+        ? <div style={{textAlign:'center',padding:'20px 0',fontSize:13,color:'var(--muted-foreground)'}}>No comments yet — start the conversation.</div>
+        : <div style={{display:'flex',flexDirection:'column',gap:20}}>
+            {comments.map(c => (
+              <div key={c.id}>
+                <div style={{display:'flex',gap:10}}>
+                  <Avatar author={c.author}/>
+                  <div style={{flex:1}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                      <span style={{fontWeight:700,fontSize:13}}>{c.author.name}</span>
+                      <span style={{fontSize:11,color:'var(--muted-foreground)'}}>{c.ts}</span>
+                      {c.edited && <span style={{fontSize:10,color:'var(--muted-foreground)',fontStyle:'italic'}}>(edited)</span>}
+                    </div>
+                    {editingId===c.id
+                      ? <CommentInput value={editText} onChange={setEditText} field={c.id}
+                          onSubmit={()=>saveEdit(true)} onCancel={()=>setEditingId(null)} submitLabel="Save changes"/>
+                      : <div style={{fontSize:13,lineHeight:1.6,color:'var(--foreground)'}}>{renderText(c.text)}</div>
+                    }
+                    {editingId!==c.id && (
+                      <div style={{display:'flex',gap:10,marginTop:6}}>
+                        <ActionBtn label="Reply" onClick={()=>setReplyingTo(replyingTo===c.id?null:c.id)}/>
+                        {c.author.name===me.name && <>
+                          <ActionBtn label="Edit"   onClick={()=>startEdit(c.id,c.text)}/>
+                          <ActionBtn label="Delete" onClick={()=>deleteComment(c.id)} danger/>
+                        </>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {c.replies.length > 0 && <ReplyThread c={c}/>}
+
+                {replyingTo===c.id && (
+                  <div style={{marginLeft:40,paddingLeft:14,borderLeft:'2px solid var(--border)',marginTop:10,display:'flex',gap:9}}>
+                    <Avatar author={me} size={26}/>
+                    <div style={{flex:1}}>
+                      <CommentInput value={replyText} onChange={setReplyText} field="reply"
+                        onSubmit={()=>addReply(c.id)} onCancel={()=>setReplyingTo(null)}
+                        placeholder="Write a reply… type @ to tag someone" submitLabel="Reply"/>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+      }
+    </div>
+  );
+};
+
+const RequestDetail = ({ req, onClose, onStatusChange, toast, role }) => {
   if (!req) return null;
   const [cancelReason, setCancelReason] = useState(req.cancellationReason || '');
   const [showCancel, setShowCancel] = useState(false);
@@ -1324,6 +1605,8 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
           </div>
         </div>
       </div>
+
+      {role && role.key !== 'tech' && <CommentsSection reqId={req.id} role={role}/>}
 
       {showCancel && (
         <div className="modal-bg" onClick={()=>setShowCancel(false)}>
@@ -2464,7 +2747,7 @@ function App() {
 
   // page render
   let content = null;
-  if (detail) content = <RequestDetail req={detail} onClose={()=>setDetail(null)} onStatusChange={onStatusChange} toast={showToast}/>;
+  if (detail) content = <RequestDetail req={detail} onClose={()=>setDetail(null)} onStatusChange={onStatusChange} toast={showToast} role={role}/>;
   else if (cpmDetail) content = <CpmDetail cpm={cpmDetail} onClose={()=>setCpmDetail(null)} toast={showToast} openDetail={setDetail}/>;
   else if (techDetail) content = <TechDetail tech={techDetail} onClose={()=>setTechDetail(null)} openDetail={setDetail}/>;
   else if (clientDetail) content = <ClientDetail client={clientDetail} onClose={()=>setClientDetail(null)} openCpm={p=>{setCpmDetail(p);}}/>;
