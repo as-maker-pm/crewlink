@@ -695,7 +695,7 @@ const MonthView = ({ cursor, role, setView, setCursor, openDetail }) => {
   allVisible.forEach(r=>{ if(!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
 
   return (
-    <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
+    <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
       <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:'1px solid var(--border)',flexShrink:0}}>
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>(
           <div key={d} style={{padding:'8px 0',textAlign:'center',fontSize:11,fontWeight:600,color:'var(--muted-foreground)',textTransform:'uppercase',letterSpacing:'.06em'}}>{d}</div>
@@ -758,21 +758,21 @@ const WeekView = ({ cursor, role, onOpen, onCreate }) => {
   const visible = calFilterByRole(REQUESTS, role);
 
   return (
-    <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
+    <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
       {/* Day headers */}
       <div style={{display:'flex',borderBottom:'1px solid var(--border)',paddingLeft:52,flexShrink:0}}>
         {days.map(d=>{
           const k=d.toISOString().slice(0,10), isT=k===TODAY_STR;
           return (
-            <div key={k} style={{flex:1,padding:'10px 0',textAlign:'center',borderRight:'1px solid var(--border)'}}>
-              <div style={{fontSize:10,fontWeight:600,color:'var(--muted-foreground)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>
+            <div key={k} style={{flex:1,padding:'5px 0',textAlign:'center',borderRight:'1px solid var(--border)'}}>
+              <div style={{fontSize:10,fontWeight:600,color:'var(--muted-foreground)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:2}}>
                 {d.toLocaleString('en',{weekday:'short'})}
               </div>
-              <div style={{width:30,height:30,borderRadius:'50%',margin:'0 auto',
+              <div style={{width:24,height:24,borderRadius:'50%',margin:'0 auto',
                 background:isT?'var(--primary)':'transparent',
                 color:isT?'#fff':'var(--foreground)',
                 display:'flex',alignItems:'center',justifyContent:'center',
-                fontSize:14,fontWeight:isT?700:500}}>
+                fontSize:12,fontWeight:isT?700:500}}>
                 {d.getDate()}
               </div>
             </div>
@@ -805,7 +805,24 @@ const DayView = ({ cursor, role, onOpen, onCreate }) => {
   ]):[];
   const hasConflict=evs.length>1&&cursor.getDate()%4===0;
   return (
-    <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
+    <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
+      {/* Day header */}
+      <div style={{display:'flex',borderBottom:'1px solid var(--border)',paddingLeft:52,flexShrink:0}}>
+        {(()=>{const isT=k===TODAY_STR; return (
+          <div style={{flex:1,padding:'5px 0',textAlign:'center'}}>
+            <div style={{fontSize:10,fontWeight:600,color:'var(--muted-foreground)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:2}}>
+              {cursor.toLocaleString('en',{weekday:'short'})}
+            </div>
+            <div style={{width:24,height:24,borderRadius:'50%',margin:'0 auto',
+              background:isT?'var(--primary)':'transparent',
+              color:isT?'#fff':'var(--foreground)',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontSize:12,fontWeight:isT?700:500}}>
+              {cursor.getDate()}
+            </div>
+          </div>
+        );})()}
+      </div>
       {hasConflict&&(
         <div className="banner warn" style={{margin:'0',flexShrink:0}}>
           <Icon name="alert" size={15}/>
