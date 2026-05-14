@@ -1031,6 +1031,9 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
   const [cancelReason, setCancelReason] = useState(req.cancellationReason || '');
   const [showCancel, setShowCancel] = useState(false);
 
+  const fmt12 = t => { const [h,m]=t.split(':').map(Number); const h12=h===0?12:h>12?h-12:h; return `${h12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`; };
+  const endTime = addMinutes(req.time, req.slotMinutes||60);
+
   const InfoTile = ({ icon, label, value, wide=false }) => (
     <div style={{padding:'13px 14px', border:'1px solid var(--border)', borderRadius:10,
       background:'var(--bg,transparent)', gridColumn:wide?'1 / -1':'auto'}}>
@@ -1107,6 +1110,8 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
               <InfoTile icon="phone"     label="Contact"      value={req.phone}/>
               <InfoTile icon="mail"      label="Email"        value={req.email}/>
               <InfoTile icon="clipboard" label="Service type" value={req.service}/>
+              <InfoTile icon="clock"     label="Time slot"    value={`${fmt12(req.time)} – ${fmt12(endTime)}`}/>
+              <InfoTile icon="calendar"  label="Duration"     value={`${req.slotMinutes||60} minutes`}/>
               <InfoTile icon="pin"       label="Address"      value={req.address} wide/>
             </div>
           </div>
