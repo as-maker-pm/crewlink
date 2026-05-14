@@ -1084,17 +1084,15 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
       <div className="card" style={{marginBottom:20,padding:'20px 24px'}}>
         <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
           <div>
-            <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
-              <span style={{fontSize:11,fontWeight:700,background:'var(--accent)',color:'var(--muted-foreground)',
-                padding:'3px 8px',borderRadius:6,letterSpacing:'.04em'}}>{req.id}</span>
-              {statusBadge(req.status)}
-            </div>
             <h2 style={{fontSize:22,fontWeight:800,margin:0,lineHeight:1.15}}>{req.service}</h2>
             <div className="muted" style={{fontSize:13,marginTop:6,display:'flex',alignItems:'center',gap:5}}>
               <Icon name="pin" size={12}/>{req.address}
+              <span style={{opacity:.4}}>·</span>
+              <span style={{fontWeight:600,letterSpacing:'.02em'}}>{req.id}</span>
             </div>
           </div>
           <div style={{textAlign:'right',flexShrink:0}}>
+            <div style={{marginBottom:8}}>{statusBadge(req.status)}</div>
             <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
               color:'var(--muted-foreground)',marginBottom:4}}>Scheduled for</div>
             <div style={{fontSize:16,fontWeight:700}}>{req.date}</div>
@@ -1216,26 +1214,7 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
             </div>
           )}
 
-          {/* Status — read-only, auto-managed */}
-          <div className="card">
-            <div className="card-h"><h3>Status</h3></div>
-            <div style={{display:'flex',flexDirection:'column',gap:5}}>
-              {STATUSES.map(s => (
-                <div key={s} style={{padding:'8px 12px',borderRadius:8,
-                  display:'flex',alignItems:'center',gap:9,
-                  background:req.status===s?'var(--accent)':'transparent',
-                  opacity:req.status===s?1:0.4}}>
-                  <div style={{width:7,height:7,borderRadius:'50%',flexShrink:0,
-                    background:req.status===s?'var(--primary)':'var(--border)'}}/>
-                  <span style={{fontSize:13,fontWeight:req.status===s?600:400}}>{s}</span>
-                  {req.status===s && <Icon name="check" size={13}/>}
-                </div>
-              ))}
-            </div>
-            <div className="muted" style={{fontSize:11,marginTop:10,display:'flex',alignItems:'center',gap:4}}>
-              <Icon name="clock" size={11}/>Status updates automatically
-            </div>
-          </div>
+
 
           {/* Activity timeline */}
           <div className="card">
