@@ -1047,87 +1047,65 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
   );
 };
 
-/* ---------- Company Discussions (full-page view) ---------- */
-const CompanyDiscussionsView = ({ role, onClose }) => {
+/* ---------- Company Threads Panel (right sidebar, like AvailSidebar) ---------- */
+const CompanyThreadsPanel = ({ role, onClose }) => {
   const [activeCompany, setActiveCompany] = useState(CLIENTS[0].id);
   const company = CLIENTS.find(c => c.id === activeCompany);
 
-  const usersFor = (clientId) => [
+  const companyUsers = [
     { name:'Alex Kowalski', initials:'AK', roleKey:'super_admin', roleLabel:'Super Admin' },
     { name:'Jamie Reyes',   initials:'JR', roleKey:'admin',       roleLabel:'Admin' },
     { name:'Sam Whitfield', initials:'SW', roleKey:'cpm',         roleLabel:'Dispatcher' },
-    ...CPMS.filter(c => c.clientId === clientId).map(c => ({
+    ...CPMS.filter(c => c.clientId === activeCompany).map(c => ({
       name: c.name, initials: c.name.split(' ').map(n=>n[0]).join(''),
       roleKey: 'cpm', roleLabel: c.role,
     })),
   ].filter((u,i,arr) => arr.findIndex(x=>x.name===u.name)===i);
 
   return (
-    <div style={{display:'flex',gap:0,height:'calc(100vh - 160px)',border:'1px solid var(--border)',borderRadius:12,overflow:'hidden',background:'var(--card)'}}>
+    <div style={{width:360,flexShrink:0,borderLeft:'1px solid var(--border)',display:'flex',
+      flexDirection:'column',background:'var(--card)',overflow:'hidden'}}>
 
-      {/* Left: company list */}
-      <div style={{width:260,flexShrink:0,borderRight:'1px solid var(--border)',display:'flex',flexDirection:'column',background:'var(--muted)'}}>
-        <div style={{padding:'18px 20px',borderBottom:'1px solid var(--border)'}}>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <Icon name="message" size={18}/>
-            <span style={{fontWeight:700,fontSize:16}}>Discussions</span>
-          </div>
-          <div style={{fontSize:13,color:'var(--muted-foreground)',marginTop:3}}>Per-company threads</div>
-        </div>
-        <div style={{flex:1,overflowY:'auto',padding:'10px 10px'}}>
+      {/* Header */}
+      <div style={{padding:'0 18px',height:46,display:'flex',alignItems:'center',gap:8,
+        borderBottom:'1px solid var(--border)',flexShrink:0}}>
+        <Icon name="message" size={15}/>
+        <span style={{fontSize:14,fontWeight:700,flex:1}}>Discussions</span>
+        <button className="icon-btn" onClick={onClose}><Icon name="x" size={15}/></button>
+      </div>
+
+      {/* Company tabs — scrollable row */}
+      <div style={{padding:'8px 12px',borderBottom:'1px solid var(--border)',flexShrink:0,overflowX:'auto'}}>
+        <div style={{display:'flex',gap:6,minWidth:'max-content'}}>
           {CLIENTS.map(c => {
             const count = (SEED_COMPANY_THREADS[c.id]||[]).reduce((a,t)=>a+1+t.replies.length,0);
             const active = activeCompany === c.id;
-            const cpms = CPMS.filter(x=>x.clientId===c.id);
             return (
-              <div key={c.id} onClick={()=>setActiveCompany(c.id)}
-                style={{padding:'12px 14px',borderRadius:10,cursor:'pointer',marginBottom:4,
-                  background:active?'var(--card)':'transparent',
-                  border: active?'1px solid var(--border)':'1px solid transparent',
-                  boxShadow: active?'var(--shadow-sm)':'none'}}>
-                <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  <span style={{fontWeight:700,fontSize:14,flex:1}}>{c.name}</span>
-                  {count > 0 && (
-                    <span style={{fontSize:11,fontWeight:700,padding:'1px 7px',
-                      background:active?'var(--primary)':'var(--muted-foreground)',
-                      color:'#fff',borderRadius:99}}>{count}</span>
-                  )}
-                </div>
-                <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:3}}>
-                  {cpms.length ? cpms.slice(0,2).map(x=>x.name.split(' ')[0]).join(', ')+(cpms.length>2?` +${cpms.length-2}`:'') : 'No dispatchers'}
-                </div>
-                <div style={{display:'flex',alignItems:'center',gap:6,marginTop:5}}>
-                  <span style={{fontSize:11,color:'var(--muted-foreground)'}}>{c.activeJobs} active jobs</span>
-                  <span style={{marginLeft:'auto',fontSize:10,padding:'1px 6px',fontWeight:700,borderRadius:4,
-                    background:c.tier==='Gold'?'rgba(234,179,8,.15)':c.tier==='Silver'?'rgba(156,163,175,.15)':'rgba(180,120,60,.1)',
-                    color:c.tier==='Gold'?'#a16207':c.tier==='Silver'?'#6b7280':'#92400e'}}>
-                    {c.tier}
-                  </span>
-                </div>
-              </div>
+              <button key={c.id} onClick={()=>setActiveCompany(c.id)}
+                style={{padding:'5px 11px',borderRadius:7,border:'1px solid',fontSize:12,fontWeight:600,
+                  cursor:'pointer',whiteSpace:'nowrap',
+                  background:active?'var(--primary)':'transparent',
+                  color:active?'#fff':'var(--muted-foreground)',
+                  borderColor:active?'var(--primary)':'var(--border)'}}>
+                {c.name.split(' ').slice(0,2).join(' ')}
+                {count > 0 && <span style={{marginLeft:5,fontSize:10,opacity:.85}}>({count})</span>}
+              </button>
             );
           })}
         </div>
-        <div style={{padding:'12px 14px',borderTop:'1px solid var(--border)'}}>
-          <button className="btn btn-outline" style={{width:'100%',justifyContent:'center',fontSize:13}} onClick={onClose}>
-            <Icon name="chevleft" size={14}/>Back to Requests
-          </button>
+      </div>
+
+      {/* Company info strip */}
+      <div style={{padding:'8px 16px',background:'var(--muted)',borderBottom:'1px solid var(--border)',flexShrink:0}}>
+        <div style={{fontWeight:600,fontSize:13}}>{company.name}</div>
+        <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>
+          {CPMS.filter(c=>c.clientId===activeCompany).map(c=>c.name).join(' · ') || 'No dispatchers'}
         </div>
       </div>
 
-      {/* Right: thread */}
-      <div style={{flex:1,display:'flex',flexDirection:'column',minWidth:0}}>
-        {/* Thread header */}
-        <div style={{padding:'16px 28px',borderBottom:'1px solid var(--border)',flexShrink:0}}>
-          <div style={{fontWeight:700,fontSize:17}}>{company.name}</div>
-          <div style={{fontSize:13,color:'var(--muted-foreground)',marginTop:2}}>
-            {CPMS.filter(c=>c.clientId===activeCompany).map(c=>c.name).join(' · ') || 'No dispatchers assigned'}
-          </div>
-        </div>
-        {/* Scrollable thread */}
-        <div style={{flex:1,overflowY:'auto',padding:'24px 28px'}}>
-          <CompanyThread companyId={activeCompany} role={role} users={usersFor(activeCompany)}/>
-        </div>
+      {/* Scrollable thread */}
+      <div style={{flex:1,overflowY:'auto',padding:'16px'}}>
+        <CompanyThread companyId={activeCompany} role={role} users={companyUsers}/>
       </div>
     </div>
   );
@@ -1181,15 +1159,15 @@ const CompanyThread = ({ companyId, role, users }) => {
   const deleteReply = (cid,rid) => setComments(cs=>cs.map(c=>c.id===cid?{...c,replies:c.replies.filter(r=>r.id!==rid)}:c));
   const startEdit = (id,text) => { setEditingId(id); setEditText(text); setShowMentions(false); };
 
-  const Av = ({a, sz=44}) => (
+  const Av = ({a, sz=34}) => (
     <div style={{width:sz,height:sz,borderRadius:'50%',background:'var(--muted)',border:'1px solid var(--border)',
-      display:'flex',alignItems:'center',justifyContent:'center',fontSize:sz<=32?12:14,fontWeight:700,flexShrink:0,letterSpacing:'.02em'}}>
+      display:'flex',alignItems:'center',justifyContent:'center',fontSize:sz<=28?11:12,fontWeight:700,flexShrink:0}}>
       {a.initials}
     </div>
   );
 
   const Btn = ({label, onClick, danger=false}) => (
-    <button onClick={onClick} style={{background:'none',border:'none',fontSize:13,fontWeight:600,
+    <button onClick={onClick} style={{background:'none',border:'none',fontSize:12,fontWeight:600,
       color:'var(--muted-foreground)',cursor:'pointer',padding:0,lineHeight:1}}
       onMouseEnter={e=>e.currentTarget.style.color=danger?'var(--destructive)':'var(--foreground)'}
       onMouseLeave={e=>e.currentTarget.style.color='var(--muted-foreground)'}>
@@ -1198,19 +1176,19 @@ const CompanyThread = ({ companyId, role, users }) => {
   );
 
   const MentionDrop = ({field}) => (showMentions && mentionFor===field && mentionMatches.length>0) ? (
-    <div style={{position:'absolute',zIndex:60,top:'calc(100% + 4px)',left:0,minWidth:240,background:'var(--card)',
-      border:'1px solid var(--border)',borderRadius:10,boxShadow:'0 8px 24px rgba(0,0,0,.12)',overflow:'hidden'}}>
-      <div style={{padding:'8px 14px',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
+    <div style={{position:'absolute',zIndex:60,top:'calc(100% + 4px)',left:0,minWidth:220,background:'var(--card)',
+      border:'1px solid var(--border)',borderRadius:8,boxShadow:'0 8px 24px rgba(0,0,0,.12)',overflow:'hidden'}}>
+      <div style={{padding:'6px 12px',fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
         color:'var(--muted-foreground)',borderBottom:'1px solid var(--border)'}}>Tag a person</div>
       {mentionMatches.map(u=>(
         <div key={u.name} onMouseDown={e=>{e.preventDefault();insertMention(u.name);}}
-          style={{padding:'10px 14px',display:'flex',alignItems:'center',gap:12,cursor:'pointer'}}
+          style={{padding:'8px 12px',display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}
           onMouseEnter={e=>e.currentTarget.style.background='var(--accent)'}
           onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-          <div style={{width:34,height:34,borderRadius:'50%',background:'var(--muted)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>{u.initials}</div>
+          <div style={{width:28,height:28,borderRadius:'50%',background:'var(--muted)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,flexShrink:0}}>{u.initials}</div>
           <div>
-            <div style={{fontSize:14,fontWeight:600}}>{u.name}</div>
-            <div style={{fontSize:12,color:'var(--muted-foreground)'}}>{u.roleLabel}</div>
+            <div style={{fontSize:13,fontWeight:600}}>{u.name}</div>
+            <div style={{fontSize:11,color:'var(--muted-foreground)'}}>{u.roleLabel}</div>
           </div>
         </div>
       ))}
@@ -1222,48 +1200,47 @@ const CompanyThread = ({ companyId, role, users }) => {
       <textarea value={value} onChange={e=>{onChange(e.target.value);detectMention(e.target.value,field);}}
         onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();onSubmit();}if(e.key==='Escape'&&onCancel)onCancel();}}
         onBlur={()=>setTimeout(()=>setShowMentions(false),150)}
-        placeholder={placeholder||'Write a message… @ to mention someone'}
+        placeholder={placeholder||'Write a message… @ to mention'}
         rows={3}
-        style={{width:'100%',border:'1px solid var(--border)',borderRadius:10,padding:'12px 14px',fontSize:14,
+        style={{width:'100%',border:'1px solid var(--border)',borderRadius:8,padding:'10px 12px',fontSize:13,
           resize:'none',outline:'none',background:'var(--card)',color:'var(--foreground)',
-          fontFamily:'inherit',lineHeight:1.6,boxSizing:'border-box',transition:'border-color .15s'}}
+          fontFamily:'inherit',lineHeight:1.55,boxSizing:'border-box',transition:'border-color .15s'}}
         onFocus={e=>e.target.style.borderColor='var(--primary)'}
       />
       <MentionDrop field={field}/>
-      <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:10}}>
-        {onCancel && <button className="btn btn-outline" onClick={onCancel}>Cancel</button>}
-        <button className="btn btn-primary" onClick={onSubmit} disabled={!value.trim()}>{submitLabel}</button>
+      <div style={{display:'flex',justifyContent:'flex-end',gap:6,marginTop:8}}>
+        {onCancel && <button className="btn btn-outline btn-sm" onClick={onCancel}>Cancel</button>}
+        <button className="btn btn-primary btn-sm" onClick={onSubmit} disabled={!value.trim()}>{submitLabel}</button>
       </div>
     </div>
   );
 
   return (
-    <div style={{paddingBottom:24}}>
-      {/* New comment input */}
-      <div style={{display:'flex',gap:14,marginBottom:30}}>
+    <div style={{paddingBottom:16}}>
+      <div style={{display:'flex',gap:10,marginBottom:20}}>
         <Av a={me}/>
         <div style={{flex:1}}><Input value={newText} onChange={setNewText} onSubmit={addComment} field="new"/></div>
       </div>
 
       {comments.length === 0
-        ? <div style={{textAlign:'center',padding:'32px 0',fontSize:15,color:'var(--muted-foreground)'}}>No messages yet — start the thread.</div>
-        : <div style={{display:'flex',flexDirection:'column',gap:28}}>
+        ? <div style={{textAlign:'center',padding:'24px 0',fontSize:13,color:'var(--muted-foreground)'}}>No messages yet — start the thread.</div>
+        : <div style={{display:'flex',flexDirection:'column',gap:20}}>
             {comments.map(c=>(
               <div key={c.id}>
-                <div style={{display:'flex',gap:14}}>
+                <div style={{display:'flex',gap:10}}>
                   <Av a={c.author}/>
                   <div style={{flex:1}}>
-                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
-                      <span style={{fontWeight:700,fontSize:16}}>{c.author.name}</span>
-                      <span style={{fontSize:13,color:'var(--muted-foreground)'}}>{c.ts}</span>
-                      {c.edited && <span style={{fontSize:12,color:'var(--muted-foreground)',fontStyle:'italic'}}>(edited)</span>}
+                    <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:4,flexWrap:'wrap'}}>
+                      <span style={{fontWeight:700,fontSize:14}}>{c.author.name}</span>
+                      <span style={{fontSize:11,color:'var(--muted-foreground)'}}>{c.ts}</span>
+                      {c.edited && <span style={{fontSize:11,color:'var(--muted-foreground)',fontStyle:'italic'}}>(edited)</span>}
                     </div>
                     {editingId===c.id
                       ? <Input value={editText} onChange={setEditText} field={c.id} onSubmit={()=>saveEdit(true)} onCancel={()=>setEditingId(null)} submitLabel="Save"/>
-                      : <div style={{fontSize:15,lineHeight:1.7}}>{renderText(c.text)}</div>
+                      : <div style={{fontSize:13,lineHeight:1.65}}>{renderText(c.text)}</div>
                     }
                     {editingId!==c.id && (
-                      <div style={{display:'flex',gap:14,marginTop:9}}>
+                      <div style={{display:'flex',gap:12,marginTop:6}}>
                         <Btn label="Reply" onClick={()=>setReplyingTo(replyingTo===c.id?null:c.id)}/>
                         {c.author.name===me.name && <>
                           <Btn label="Edit" onClick={()=>startEdit(c.id,c.text)}/>
@@ -1275,22 +1252,22 @@ const CompanyThread = ({ companyId, role, users }) => {
                 </div>
 
                 {c.replies.length > 0 && (
-                  <div style={{marginLeft:58,paddingLeft:18,borderLeft:'2px solid var(--border)',marginTop:16,display:'flex',flexDirection:'column',gap:18}}>
+                  <div style={{marginLeft:44,paddingLeft:12,borderLeft:'2px solid var(--border)',marginTop:10,display:'flex',flexDirection:'column',gap:12}}>
                     {c.replies.map(r=>(
-                      <div key={r.id} style={{display:'flex',gap:12}}>
-                        <Av a={r.author} sz={36}/>
+                      <div key={r.id} style={{display:'flex',gap:8}}>
+                        <Av a={r.author} sz={26}/>
                         <div style={{flex:1}}>
-                          <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:5}}>
-                            <span style={{fontWeight:700,fontSize:14}}>{r.author.name}</span>
-                            <span style={{fontSize:12,color:'var(--muted-foreground)'}}>{r.ts}</span>
-                            {r.edited && <span style={{fontSize:12,color:'var(--muted-foreground)',fontStyle:'italic'}}>(edited)</span>}
+                          <div style={{display:'flex',alignItems:'baseline',gap:7,marginBottom:3,flexWrap:'wrap'}}>
+                            <span style={{fontWeight:700,fontSize:13}}>{r.author.name}</span>
+                            <span style={{fontSize:11,color:'var(--muted-foreground)'}}>{r.ts}</span>
+                            {r.edited && <span style={{fontSize:11,color:'var(--muted-foreground)',fontStyle:'italic'}}>(edited)</span>}
                           </div>
                           {editingId===r.id
                             ? <Input value={editText} onChange={setEditText} field={r.id} onSubmit={()=>saveEdit(false,c.id)} onCancel={()=>setEditingId(null)} submitLabel="Save"/>
-                            : <div style={{fontSize:14,lineHeight:1.65}}>{renderText(r.text)}</div>
+                            : <div style={{fontSize:13,lineHeight:1.6}}>{renderText(r.text)}</div>
                           }
                           {editingId!==r.id && r.author.name===me.name && (
-                            <div style={{display:'flex',gap:12,marginTop:7}}>
+                            <div style={{display:'flex',gap:10,marginTop:5}}>
                               <Btn label="Edit" onClick={()=>startEdit(r.id,r.text)}/>
                               <Btn label="Delete" onClick={()=>deleteReply(c.id,r.id)} danger/>
                             </div>
@@ -1302,12 +1279,12 @@ const CompanyThread = ({ companyId, role, users }) => {
                 )}
 
                 {replyingTo===c.id && (
-                  <div style={{marginLeft:58,paddingLeft:18,borderLeft:'2px solid var(--border)',marginTop:16,display:'flex',gap:12}}>
-                    <Av a={me} sz={36}/>
+                  <div style={{marginLeft:44,paddingLeft:12,borderLeft:'2px solid var(--border)',marginTop:10,display:'flex',gap:8}}>
+                    <Av a={me} sz={26}/>
                     <div style={{flex:1}}>
                       <Input value={replyText} onChange={setReplyText} field="reply"
                         onSubmit={()=>addReply(c.id)} onCancel={()=>setReplyingTo(null)}
-                        placeholder="Write a reply… @ to mention" submitLabel="Reply"/>
+                        placeholder="Reply… @ to mention" submitLabel="Reply"/>
                     </div>
                   </div>
                 )}
@@ -1355,7 +1332,7 @@ const RequestsList = ({ openDetail, openAdd, role }) => {
   const totalThreadMsgs = Object.values(SEED_COMPANY_THREADS).reduce((a,arr)=>a+arr.reduce((b,t)=>b+1+t.replies.length,0),0);
 
   const tableBlock = (
-    <div style={{flex:1,minWidth:0}}>
+    <div style={{flex:1,minWidth:0,overflowX:'auto'}}>
       <div className="card flat" style={{padding:'10px 14px', marginBottom:14, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
         <div className="seg">
           {['All',...STATUSES].map(s => <button key={s} className={filter===s?'active':''} onClick={()=>setFilter(s)}>{s}</button>)}
@@ -1469,7 +1446,10 @@ const RequestsList = ({ openDetail, openAdd, role }) => {
       />
 
       {showDiscussions && canDiscuss
-        ? <CompanyDiscussionsView role={role} onClose={()=>setShowDiscussions(false)}/>
+        ? <div style={{display:'flex',flexDirection:'row',border:'1px solid var(--border)',borderRadius:12,overflow:'hidden',background:'var(--card)'}}>
+            {tableBlock}
+            <CompanyThreadsPanel role={role} onClose={()=>setShowDiscussions(false)}/>
+          </div>
         : tableBlock
       }
     </div>
