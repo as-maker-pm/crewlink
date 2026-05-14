@@ -1083,7 +1083,7 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
       {/* Hero band */}
       <div className="card" style={{marginBottom:20,padding:'20px 24px'}}>
         <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
-          <div>
+          <div style={{paddingTop:4}}>
             <h2 style={{fontSize:22,fontWeight:800,margin:0,lineHeight:1.15}}>{req.service}</h2>
             <div className="muted" style={{fontSize:13,marginTop:6,display:'flex',alignItems:'center',gap:5}}>
               <Icon name="pin" size={12}/>{req.address}
@@ -1091,17 +1091,20 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
               <span style={{fontWeight:600,letterSpacing:'.02em'}}>{req.id}</span>
             </div>
           </div>
-          <div style={{textAlign:'right',flexShrink:0}}>
-            <div style={{marginBottom:8}}>{statusBadge(req.status)}</div>
-            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
-              color:'var(--muted-foreground)',marginBottom:4}}>Scheduled for</div>
-            <div style={{fontSize:16,fontWeight:700}}>{req.date}</div>
-            <div style={{fontSize:13,color:'var(--muted-foreground)',marginTop:2}}>
-              {fmt12(req.time)} &nbsp;·&nbsp; {req.slotMinutes||60} min
+          <div style={{textAlign:'right',flexShrink:0,display:'flex',flexDirection:'column',gap:12}}>
+            <div style={{display:'flex',justifyContent:'flex-end'}}>{statusBadge(req.status)}</div>
+            <div>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
+                color:'var(--muted-foreground)',marginBottom:4}}>Scheduled for</div>
+              <div style={{fontSize:16,fontWeight:700}}>{req.date}</div>
+              <div style={{fontSize:13,color:'var(--muted-foreground)',marginTop:2}}>
+                {fmt12(req.time)} &nbsp;·&nbsp; {req.slotMinutes||60} min
+              </div>
             </div>
-            <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:10,display:'flex',
-              alignItems:'center',gap:4,justifyContent:'flex-end'}}>
-              <Icon name="clock" size={11}/>Created {req.created}
+            <div style={{borderTop:'1px solid var(--border)',paddingTop:10}}>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
+                color:'var(--muted-foreground)',marginBottom:3}}>Created</div>
+              <div style={{fontSize:13,fontWeight:600}}>{req.created}</div>
             </div>
           </div>
         </div>
