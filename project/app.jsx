@@ -185,7 +185,7 @@ const NAV_BY_ROLE = {
   super_admin: ['home','tenants','plans','calendar','settings'],
   admin:       ['home','calendar','requests','technicians','clients','tenant_services','plan_usage','settings'],
   cpm:         ['home','calendar','requests','technicians','clients','settings'],
-  tech:        ['home','calendar','my_requests','settings'],
+  tech:        ['home','calendar','my_requests','availability','settings'],
 };
 
 const NAV_DEFS = {
@@ -193,6 +193,7 @@ const NAV_DEFS = {
   calendar:        { label:'Calendar',         icon:'calendar' },
   requests:        { label:'Survey Requests',  icon:'clipboard' },
   my_requests:     { label:'My Schedule',      icon:'clipboard' },
+  availability:    { label:'My Availability',  icon:'clock' },
   technicians:     { label:'Technicians',      icon:'users' },
   clients:         { label:'Dispatching Cos.', icon:'building' },
   tenants:         { label:'Tenants',          icon:'building' },
@@ -1986,6 +1987,234 @@ const NotFound = ({ goHome }) => (
   </div>
 );
 
+/* ---------- TECH AVAILABILITY ---------- */
+const DAYS_OF_WEEK = ['mon','tue','wed','thu','fri','sat','sun'];
+const DAY_LABEL = {mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'};
+
+const BlockTimeModal = ({ onClose, onSave }) => {
+  const [date,   setDate]   = useState('');
+  const [allDay, setAllDay] = useState(false);
+  const [start,  setStart]  = useState('09:00');
+  const [end,    setEnd]    = useState('10:00');
+  const [reason, setReason] = useState('');
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" style={{maxWidth:440}} onClick={e=>e.stopPropagation()}>
+        <div className="modal-h">
+          <h3 style={{fontSize:16,fontWeight:700}}>Block a Time Slot</h3>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16}/></button>
+        </div>
+        <div className="modal-b" style={{display:'flex',flexDirection:'column',gap:16}}>
+          <div className="field">
+            <label>Date <span className="req">*</span></label>
+            <input type="date" className="input" value={date} onChange={e=>setDate(e.target.value)}/>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',background:'var(--accent)',borderRadius:8,cursor:'pointer'}} onClick={()=>setAllDay(v=>!v)}>
+            <Toggle on={allDay} onChange={setAllDay}/>
+            <div>
+              <div style={{fontSize:13,fontWeight:600}}>All day</div>
+              <div style={{fontSize:11,color:'var(--muted-foreground)'}}>Block the entire day from bookings</div>
+            </div>
+          </div>
+          {!allDay && (
+            <div style={{display:'grid',gridTemplateColumns:'1fr 20px 1fr',alignItems:'end',gap:8}}>
+              <div className="field">
+                <label>Start</label>
+                <input type="time" className="input" value={start} onChange={e=>setStart(e.target.value)}/>
+              </div>
+              <span style={{textAlign:'center',color:'var(--muted-foreground)',paddingBottom:10}}>—</span>
+              <div className="field">
+                <label>End</label>
+                <input type="time" className="input" value={end} onChange={e=>setEnd(e.target.value)}/>
+              </div>
+            </div>
+          )}
+          <div className="field">
+            <label>Reason <span style={{fontWeight:400,color:'var(--muted-foreground)'}}>(optional)</span></label>
+            <input type="text" className="input" placeholder="e.g. Doctor appointment, Personal time…" value={reason} onChange={e=>setReason(e.target.value)}/>
+          </div>
+        </div>
+        <div className="modal-f">
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" disabled={!date} onClick={()=>onSave({date,allDay,start,end,reason})}>
+            <Icon name="check" size={14}/>Block this time
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TechAvailability = () => {
+  const [schedule, setSchedule] = useState({
+    mon: { enabled:true,  slots:[{start:'09:00',end:'17:00'}] },
+    tue: { enabled:true,  slots:[{start:'09:00',end:'17:00'}] },
+    wed: { enabled:true,  slots:[{start:'09:00',end:'17:00'}] },
+    thu: { enabled:true,  slots:[{start:'09:00',end:'17:00'}] },
+    fri: { enabled:true,  slots:[{start:'09:00',end:'17:00'}] },
+    sat: { enabled:false, slots:[] },
+    sun: { enabled:false, slots:[] },
+  });
+  const [blocks, setBlocks] = useState([
+    {id:'tb1',date:'2025-11-15',allDay:false,start:'10:00',end:'12:00',reason:'Doctor appointment'},
+    {id:'tb2',date:'2025-11-20',allDay:true, start:'09:00',end:'17:00',reason:'Personal day off'},
+    {id:'tb3',date:'2025-11-26',allDay:false,start:'13:00',end:'15:30',reason:''},
+  ]);
+  const [showModal, setShowModal] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const toggleDay = day => setSchedule(s => ({
+    ...s, [day]: {...s[day], enabled:!s[day].enabled, slots: !s[day].enabled ? [{start:'09:00',end:'17:00'}] : s[day].slots}
+  }));
+  const updateSlot = (day,i,field,val) => setSchedule(s => ({
+    ...s, [day]: {...s[day], slots: s[day].slots.map((sl,j)=>j===i?{...sl,[field]:val}:sl)}
+  }));
+  const addSlot = day => setSchedule(s => ({
+    ...s, [day]: {...s[day], slots:[...s[day].slots,{start:'09:00',end:'17:00'}]}
+  }));
+  const removeSlot = (day,i) => {
+    const slots = schedule[day].slots.filter((_,j)=>j!==i);
+    setSchedule(s => ({...s, [day]: {...s[day], slots, enabled: slots.length > 0}}));
+  };
+  const addBlock  = b => { setBlocks(bs=>[...bs,{...b,id:`tb${Date.now()}`}]); setShowModal(false); };
+  const rmBlock   = id => setBlocks(bs=>bs.filter(b=>b.id!==id));
+  const save = () => { setSaved(true); setTimeout(()=>setSaved(false),2000); };
+
+  const fmt12 = t => {
+    const [h,m] = t.split(':').map(Number);
+    const suffix = h < 12 ? 'AM' : 'PM';
+    const h12 = h === 0 ? 12 : h > 12 ? h-12 : h;
+    return `${h12}:${String(m).padStart(2,'0')} ${suffix}`;
+  };
+  const fmtDate = d => new Date(d+'T12:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+
+  return (
+    <div>
+      <PageHead title="My Availability" sub="Set your working hours and block off personal time"
+        right={
+          <button className="btn btn-primary" onClick={save} style={{minWidth:140,justifyContent:'center'}}>
+            {saved
+              ? <><Icon name="check" size={14}/>Saved!</>
+              : <><Icon name="check" size={14}/>Save changes</>}
+          </button>
+        }
+      />
+
+      <div className="detail-grid" style={{alignItems:'start'}}>
+
+        {/* ── Left: Weekly schedule ── */}
+        <div className="card" style={{padding:0,overflow:'hidden'}}>
+          <div style={{padding:'16px 20px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div>
+              <h3 style={{fontSize:15,fontWeight:700}}>Weekly Hours</h3>
+              <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>Your recurring availability each week</div>
+            </div>
+            <Icon name="calendar" size={16} color="var(--muted-foreground)"/>
+          </div>
+          {DAYS_OF_WEEK.map(day => {
+            const d = schedule[day];
+            return (
+              <div key={day} style={{display:'flex',alignItems:'flex-start',gap:14,padding:'14px 20px',
+                borderBottom:'1px solid var(--border)',
+                background:d.enabled?'transparent':'var(--muted)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,width:140,paddingTop:2,flexShrink:0}}>
+                  <Toggle on={d.enabled} onChange={()=>toggleDay(day)}/>
+                  <span style={{fontSize:13,fontWeight:600,color:d.enabled?'var(--foreground)':'var(--muted-foreground)'}}>{DAY_LABEL[day]}</span>
+                </div>
+                {d.enabled ? (
+                  <div style={{flex:1,display:'flex',flexDirection:'column',gap:8}}>
+                    {d.slots.map((sl,i) => (
+                      <div key={i} style={{display:'flex',alignItems:'center',gap:8}}>
+                        <input type="time" className="input" style={{width:112,padding:'6px 8px',fontSize:13}} value={sl.start} onChange={e=>updateSlot(day,i,'start',e.target.value)}/>
+                        <span style={{color:'var(--muted-foreground)',fontSize:13,flexShrink:0}}>—</span>
+                        <input type="time" className="input" style={{width:112,padding:'6px 8px',fontSize:13}} value={sl.end} onChange={e=>updateSlot(day,i,'end',e.target.value)}/>
+                        <button className="icon-btn" style={{width:28,height:28,flexShrink:0,color:'var(--muted-foreground)'}} onClick={()=>removeSlot(day,i)}>
+                          <Icon name="trash" size={13}/>
+                        </button>
+                      </div>
+                    ))}
+                    <button style={{background:'none',border:'none',padding:0,color:'var(--primary)',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}
+                      onClick={()=>addSlot(day)}>
+                      <Icon name="plus" size={13}/>Add hours
+                    </button>
+                  </div>
+                ) : (
+                  <span style={{fontSize:13,color:'var(--muted-foreground)',paddingTop:2}}>Unavailable</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Right column ── */}
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+
+          {/* Timezone */}
+          <div className="card" style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:14}}>
+            <div style={{width:36,height:36,borderRadius:8,background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <Icon name="clock" size={16} color="var(--primary)"/>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:600}}>America / New_York</div>
+              <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:1}}>Times shown in your local timezone</div>
+            </div>
+            <button className="btn btn-outline btn-sm">Change</button>
+          </div>
+
+          {/* Blocked times */}
+          <div className="card" style={{padding:0,overflow:'hidden'}}>
+            <div style={{padding:'16px 20px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div>
+                <h3 style={{fontSize:15,fontWeight:700}}>Blocked Times</h3>
+                <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>Specific times you're unavailable</div>
+              </div>
+              <button className="btn btn-primary btn-sm" onClick={()=>setShowModal(true)}>
+                <Icon name="plus" size={13}/>Block time
+              </button>
+            </div>
+            {blocks.length === 0
+              ? <div style={{padding:'28px 20px',textAlign:'center',color:'var(--muted-foreground)',fontSize:13}}>No blocked times — you're fully available during working hours.</div>
+              : [...blocks].sort((a,b)=>a.date.localeCompare(b.date)).map(bl => (
+                <div key={bl.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 20px',borderBottom:'1px solid var(--border)'}}>
+                  <div style={{width:36,height:36,borderRadius:8,background:'rgba(239,68,68,0.08)',color:'var(--destructive)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <Icon name="x" size={15}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600}}>{fmtDate(bl.date)}</div>
+                    <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:1}}>
+                      {bl.allDay ? 'All day' : `${fmt12(bl.start)} – ${fmt12(bl.end)}`}
+                      {bl.reason && <span> · {bl.reason}</span>}
+                    </div>
+                  </div>
+                  <button className="icon-btn" style={{width:28,height:28,flexShrink:0,color:'var(--muted-foreground)'}} onClick={()=>rmBlock(bl.id)}>
+                    <Icon name="trash" size={13}/>
+                  </button>
+                </div>
+              ))
+            }
+          </div>
+
+          {/* Service radius */}
+          <div className="card">
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+              <h3 style={{fontSize:14,fontWeight:700}}>Service Radius</h3>
+              <span className="badge badge-pri">250 mi</span>
+            </div>
+            <div style={{fontSize:12,color:'var(--muted-foreground)',marginBottom:12}}>Max distance you'll travel for a job</div>
+            <input type="range" min={25} max={500} step={25} defaultValue={250} style={{width:'100%',accentColor:'var(--primary)'}}/>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--muted-foreground)',marginTop:4}}>
+              <span>25 mi</span><span>500 mi</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {showModal && <BlockTimeModal onClose={()=>setShowModal(false)} onSave={addBlock}/>}
+    </div>
+  );
+};
+
 /* ---------- ROOT APP ---------- */
 function App() {
   const [theme, setTheme] = useState('light');
@@ -2043,6 +2272,7 @@ function App() {
   else if (route === 'plans') content = <Plans/>;
   else if (route === 'plan_usage') content = <PlanUsage/>;
   else if (route === 'tenant_services') content = <TenantServices/>;
+  else if (route === 'availability') content = <TechAvailability/>;
   else if (route === 'settings') content = <Settings theme={theme} setTheme={setTheme}/>;
 
   if (view === 'signin')     return <SignIn onSignIn={()=>setView('app')} goForgot={()=>setView('forgot')}/>;
