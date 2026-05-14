@@ -585,7 +585,7 @@ const DayColumn = ({ dayKey, events, bufs, onOpen, onCreate, isToday }) => {
 
   return (
     <div ref={ref}
-      style={{flex:1, position:'relative', height:totalH, userSelect:'none', minWidth:0,
+      style={{flex:1, position:'relative', height:totalH, userSelect:'none', minWidth:70,
         background: isToday ? 'rgba(0,123,255,0.025)' : 'transparent',
         borderRight:'1px solid var(--border)'}}
       onMouseDown={e => { if (e.target.closest('[data-ev]')) return; e.preventDefault(); const y=getY(e); setDrag({y0:y,y1:y}); setHover(null); }}
@@ -695,13 +695,13 @@ const MonthView = ({ cursor, role, setView, setCursor, openDetail }) => {
   allVisible.forEach(r=>{ if(!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
 
   return (
-    <div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:'1px solid var(--border)',marginBottom:0}}>
+    <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:'1px solid var(--border)',flexShrink:0}}>
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>(
           <div key={d} style={{padding:'8px 0',textAlign:'center',fontSize:11,fontWeight:600,color:'var(--muted-foreground)',textTransform:'uppercase',letterSpacing:'.06em'}}>{d}</div>
         ))}
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gridTemplateRows:'repeat(6,1fr)',flex:1}}>
         {cells.map((c,i)=>{
           const k=fmt(c.date), isToday=k===TODAY_STR;
           const evs=(byDate[k]||[]).slice(0,3);
@@ -758,9 +758,9 @@ const WeekView = ({ cursor, role, onOpen, onCreate }) => {
   const visible = calFilterByRole(REQUESTS, role);
 
   return (
-    <div>
+    <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
       {/* Day headers */}
-      <div style={{display:'flex',borderBottom:'1px solid var(--border)',paddingLeft:52}}>
+      <div style={{display:'flex',borderBottom:'1px solid var(--border)',paddingLeft:52,flexShrink:0}}>
         {days.map(d=>{
           const k=d.toISOString().slice(0,10), isT=k===TODAY_STR;
           return (
@@ -780,7 +780,7 @@ const WeekView = ({ cursor, role, onOpen, onCreate }) => {
         })}
       </div>
       {/* Scrollable body */}
-      <div style={{display:'flex',overflowY:'auto',maxHeight:600}}>
+      <div style={{display:'flex',overflowY:'auto',overflowX:'auto',flex:1,minHeight:0}}>
         <TimeGutter/>
         {days.map(d=>{
           const k=d.toISOString().slice(0,10);
@@ -805,14 +805,14 @@ const DayView = ({ cursor, role, onOpen, onCreate }) => {
   ]):[];
   const hasConflict=evs.length>1&&cursor.getDate()%4===0;
   return (
-    <div>
+    <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
       {hasConflict&&(
-        <div className="banner warn" style={{margin:'0 0 12px'}}>
+        <div className="banner warn" style={{margin:'0',flexShrink:0}}>
           <Icon name="alert" size={15}/>
           <div><strong>Scheduling conflict</strong> — two jobs overlap at 13:00. <a href="#" style={{color:'inherit',fontWeight:600}}>Reassign →</a></div>
         </div>
       )}
-      <div style={{display:'flex',overflowY:'auto',maxHeight:620}}>
+      <div style={{display:'flex',overflowY:'auto',flex:1,minHeight:0}}>
         <TimeGutter/>
         <DayColumn dayKey={k} events={evs} bufs={bufs} onOpen={onOpen} onCreate={onCreate} isToday={k===TODAY_STR}/>
       </div>
@@ -846,9 +846,9 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
   }, [view, cursor]);
 
   return (
-    <div>
+    <div style={{margin:'-24px',height:'calc(100vh - 74px)',display:'flex',flexDirection:'column',overflow:'hidden',background:'var(--background)'}}>
       {/* Single unified toolbar */}
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:20,flexWrap:'wrap'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 20px',flexWrap:'wrap',flexShrink:0,borderBottom:'1px solid var(--border)',background:'var(--card)'}}>
         <div className="row" style={{gap:4}}>
           <button className="icon-btn" style={{width:32,height:32}} onClick={()=>shift(-1)}><Icon name="chevleft" size={16}/></button>
           <button className="btn btn-outline btn-sm" onClick={()=>setCursor(new Date(2025,10,10))}>Today</button>
@@ -869,8 +869,8 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
         <button className="btn btn-primary btn-sm" onClick={onAdd}><Icon name="plus" size={14}/>New Booking</button>
       </div>
 
-      {/* Calendar grid — borderless outer container */}
-      <div style={{border:'1px solid var(--border)',borderRadius:10,overflow:'hidden',background:'var(--card)'}}>
+      {/* Calendar grid — fills remaining height */}
+      <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column',background:'var(--card)'}}>
         {view==='month' && <MonthView cursor={cursor} role={role} setView={setView} setCursor={setCursor} openDetail={openDetail}/>}
         {view==='week'  && <WeekView  cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt}/>}
         {view==='day'   && <DayView   cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt}/>}
