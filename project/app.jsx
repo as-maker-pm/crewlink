@@ -863,7 +863,7 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
   }, [view, cursor]);
 
   return (
-    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',background:'var(--card)'}}>
+    <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column',overflow:'hidden',background:'var(--card)'}}>
       {/* Single unified toolbar */}
       <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 20px',flexWrap:'wrap',flexShrink:0,borderBottom:'1px solid var(--border)'}}>
         <div className="row" style={{gap:4}}>
@@ -887,7 +887,7 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
       </div>
 
       {/* Calendar grid — fills remaining height */}
-      <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+      <div style={{flex:1,minHeight:0,overflow:'hidden',display:'flex',flexDirection:'column'}}>
         {view==='month' && <MonthView cursor={cursor} role={role} setView={setView} setCursor={setCursor} openDetail={openDetail}/>}
         {view==='week'  && <WeekView  cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt}/>}
         {view==='day'   && <DayView   cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt}/>}
@@ -2042,7 +2042,7 @@ function App() {
   return (
     <div className="app" data-screen-label={NAV_DEFS[route]?.label || 'CrewLink'}>
       <Sidebar role={role} route={route} setRoute={setRoute} collapsed={collapsed} setCollapsed={setCollapsed}/>
-      <div style={{display:'flex', flexDirection:'column', minWidth:0, height:'100%', overflow:'hidden'}}>
+      <div style={{display:'flex', flexDirection:'column', minWidth:0, minHeight:0, height:'100%', overflow:'hidden'}}>
         <Header role={role} setRole={setRole} theme={theme} setTheme={setTheme} onAdd={()=>setShowAdd(true)} onSearch={setQuery} query={query} onSignOut={()=>setView('signin')} setView={setView}/>
         <main className="main" style={route==='calendar'?{padding:0,overflow:'hidden',display:'flex',flexDirection:'column'}:{}}>{content}</main>
       </div>
