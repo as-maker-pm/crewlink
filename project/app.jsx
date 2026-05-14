@@ -1134,7 +1134,7 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
             <div className="card">
               <div className="card-h"><h3>Notes</h3></div>
               <div style={{fontSize:13,lineHeight:1.75,color:'var(--muted-foreground)',
-                padding:'12px 14px',background:'var(--accent)',borderRadius:8,
+                padding:'12px 14px',background:'var(--muted)',borderRadius:8,
                 borderLeft:'3px solid var(--border)'}}>
                 {req.noteText || req.notes}
               </div>
@@ -1148,17 +1148,18 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
               {!req.proposal && <button className="btn btn-outline btn-sm"><Icon name="upload" size={14}/>Upload</button>}
             </div>
             {req.proposal ?
-              <div className="row" style={{padding:14,border:'1px solid var(--border)',borderRadius:10,gap:14}}>
-                <div style={{width:40,height:48,background:'var(--accent)',borderRadius:6,
+              <div style={{display:'flex',alignItems:'center',padding:'10px 12px',
+                border:'1px solid var(--border)',borderRadius:8,gap:10}}>
+                <div style={{width:32,height:32,background:'var(--muted)',borderRadius:6,
                   display:'flex',alignItems:'center',justifyContent:'center',color:'var(--primary)',flexShrink:0}}>
-                  <Icon name="file" size={20}/>
+                  <Icon name="file" size={15}/>
                 </div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:600,fontSize:13}}>{req.proposal.fileName}</div>
-                  <div className="muted" style={{fontSize:12,marginTop:2}}>PDF · {req.proposal.fileSize}</div>
+                  <div style={{fontWeight:600,fontSize:12,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{req.proposal.fileName}</div>
+                  <div className="muted" style={{fontSize:11}}>PDF · {req.proposal.fileSize}</div>
                 </div>
-                <button className="btn btn-ghost btn-sm"><Icon name="download" size={14}/>Download</button>
-                <button className="btn btn-ghost btn-sm"><Icon name="eye" size={14}/>Preview</button>
+                <button className="btn btn-ghost btn-sm" style={{padding:'4px 8px'}}><Icon name="download" size={13}/>Download</button>
+                <button className="btn btn-ghost btn-sm" style={{padding:'4px 8px'}}><Icon name="eye" size={13}/>Preview</button>
               </div>
               :
               <div className="muted" style={{padding:'32px 0',textAlign:'center',
