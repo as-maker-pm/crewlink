@@ -1,0 +1,7 @@
+{
+  "name": "crewlink-prototype",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "npx serve project -p 3000"
+  }
+}

@@ -1616,8 +1616,8 @@ const AuthShell = ({ children }) => (
     <div style={{display:'flex', alignItems:'center', justifyContent:'center', padding:40}}>
       <div style={{width:'100%', maxWidth:400}}>
         <div className="row" style={{marginBottom:32}}>
-          <div className="logo"><Icon name="bolt" size={18}/></div>
-          <div style={{fontWeight:700, fontSize:18}}>CrewLink</div>
+          <div className="brand-mark"><Icon name="bolt" size={18}/></div>
+          <div style={{fontWeight:700, fontSize:18, fontFamily:'var(--font-primary)'}}>CrewLink</div>
         </div>
         {children}
         <div className="muted" style={{fontSize:12, marginTop:40, textAlign:'center'}}>
@@ -1767,6 +1767,7 @@ function App() {
   const [detail, setDetail] = useState(null); // request detail
   const [techDetail, setTechDetail] = useState(null);
   const [clientDetail, setClientDetail] = useState(null);
+  const [cpmDetail, setCpmDetail] = useState(null);
   const [tenantDetail, setTenantDetail] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState(null);
@@ -1777,7 +1778,7 @@ function App() {
   }, [theme]);
 
   // reset child views on route change
-  useEffect(() => { setDetail(null); setTechDetail(null); setClientDetail(null); setTenantDetail(null); }, [route]);
+  useEffect(() => { setDetail(null); setTechDetail(null); setClientDetail(null); setCpmDetail(null); setTenantDetail(null); }, [route]);
 
   // also reset to allowed nav when role changes
   useEffect(() => {
@@ -1799,8 +1800,9 @@ function App() {
   // page render
   let content = null;
   if (detail) content = <RequestDetail req={detail} onClose={()=>setDetail(null)} onStatusChange={onStatusChange} toast={showToast}/>;
+  else if (cpmDetail) content = <CpmDetail cpm={cpmDetail} onClose={()=>setCpmDetail(null)} toast={showToast} openDetail={setDetail}/>;
   else if (techDetail) content = <TechDetail tech={techDetail} onClose={()=>setTechDetail(null)} openDetail={setDetail}/>;
-  else if (clientDetail) content = <ClientDetail client={clientDetail} onClose={()=>setClientDetail(null)}/>;
+  else if (clientDetail) content = <ClientDetail client={clientDetail} onClose={()=>setClientDetail(null)} openCpm={p=>{setCpmDetail(p);}}/>;
   else if (tenantDetail) content = <TenantDetail tenant={tenantDetail} onClose={()=>setTenantDetail(null)}/>;
   else if (route === 'home') content = <HomeDashboard role={role} go={go}/>;
   else if (route === 'calendar') content = <Calendar go={go} openDetail={setDetail}/>;
