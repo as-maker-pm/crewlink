@@ -521,8 +521,10 @@ const TechHome = ({ go }) => {
 
 /* ---------- CALENDAR ---------- */
 const CAL_HOUR_PX = 64;
-const CAL_START   = 7;
-const CAL_END     = 20;
+const CAL_START   = 0;
+const CAL_END     = 24;
+const WORK_START  = 9;
+const WORK_END    = 17;
 const CAL_HOURS   = Array.from({length: CAL_END - CAL_START}, (_, i) => i + CAL_START);
 const TODAY_STR   = '2025-11-12';
 const NOW_MIN     = 10 * 60 + 30;
@@ -538,7 +540,7 @@ const snapTime   = (y) => {
   const raw = Math.round((y / CAL_HOUR_PX * 60 + CAL_START * 60) / 15) * 15;
   return minToTime(Math.max(CAL_START*60, Math.min((CAL_END-0.25)*60, raw)));
 };
-const fmtHour = (h) => h === 12 ? '12 PM' : h > 12 ? `${h-12} PM` : `${h} AM`;
+const fmtHour = (h) => h === 0 ? '12 AM' : h === 12 ? '12 PM' : h > 12 ? `${h-12} PM` : `${h} AM`;
 
 const calFilterByRole = (reqs, role) => {
   if (role.key === 'tech') return reqs.filter(r => r.tech.id === 't1');
@@ -602,6 +604,12 @@ const DayColumn = ({ dayKey, events, bufs, onOpen, onCreate, isToday }) => {
       }}
       onMouseLeave={() => { setDrag(null); setHover(null); }}
     >
+      {/* Off-hours shading */}
+      <div style={{position:'absolute',left:0,right:0,top:0,height:timeToY(`${String(WORK_START).padStart(2,'0')}:00`),
+        background:'var(--muted)',opacity:.35,pointerEvents:'none'}}/>
+      <div style={{position:'absolute',left:0,right:0,top:timeToY(`${String(WORK_END).padStart(2,'0')}:00`),
+        bottom:0,background:'var(--muted)',opacity:.35,pointerEvents:'none'}}/>
+
       {/* Hour grid lines */}
       {CAL_HOURS.map((h,i) => (
         <React.Fragment key={h}>
@@ -756,6 +764,8 @@ const WeekView = ({ cursor, role, onOpen, onCreate }) => {
   const start=new Date(cursor); start.setDate(cursor.getDate()-cursor.getDay());
   const days=Array.from({length:7},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);return d;});
   const visible = calFilterByRole(REQUESTS, role);
+  const scrollRef = useRef(null);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = timeToY(`${String(WORK_START).padStart(2,'0')}:00`); }, []);
 
   return (
     <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
@@ -780,7 +790,7 @@ const WeekView = ({ cursor, role, onOpen, onCreate }) => {
         })}
       </div>
       {/* Scrollable body */}
-      <div style={{display:'flex',overflowY:'auto',overflowX:'auto',height:'calc(100vh - 172px)'}}>
+      <div ref={scrollRef} style={{display:'flex',overflowY:'auto',overflowX:'auto',height:'calc(100vh - 172px)'}}>
         <TimeGutter/>
         {days.map(d=>{
           const k=d.toISOString().slice(0,10);
@@ -798,6 +808,8 @@ const WeekView = ({ cursor, role, onOpen, onCreate }) => {
 
 const DayView = ({ cursor, role, onOpen, onCreate }) => {
   const k   = cursor.toISOString().slice(0,10);
+  const scrollRef = useRef(null);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = timeToY(`${String(WORK_START).padStart(2,'0')}:00`); }, []);
   const evs = calFilterByRole(REQUESTS.filter(r=>r.date===k), role);
   const bufs= role.key==='tech'?evs.flatMap(ev=>[
     {id:`bb${ev.id}`,time:minToTime(Math.max(CAL_START*60,timeToMin(ev.time)-30)),slotMinutes:30},
@@ -829,7 +841,7 @@ const DayView = ({ cursor, role, onOpen, onCreate }) => {
           <div><strong>Scheduling conflict</strong> — two jobs overlap at 13:00. <a href="#" style={{color:'inherit',fontWeight:600}}>Reassign →</a></div>
         </div>
       )}
-      <div style={{display:'flex',overflowY:'auto',height:'calc(100vh - 172px)'}}>
+      <div ref={scrollRef} style={{display:'flex',overflowY:'auto',height:'calc(100vh - 172px)'}}>
         <TimeGutter/>
         <DayColumn dayKey={k} events={evs} bufs={bufs} onOpen={onOpen} onCreate={onCreate} isToday={k===TODAY_STR}/>
       </div>
