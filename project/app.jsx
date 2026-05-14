@@ -249,17 +249,31 @@ const Sidebar = ({ role, route, setRoute, collapsed, setCollapsed }) => {
 };
 
 /* ---------- Header ---------- */
-const Header = ({ role, setRole, theme, setTheme, onAdd, onSearch, query, onSignOut, setView }) => {
+const Header = ({ role, setRole, theme, setTheme, onAdd, onSearch, query, onSignOut, setView, breadcrumbs=[] }) => {
   const [roleOpen, setRoleOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   return (
     <header className="hd">
       <div className="left">
-        <div className="search">
-          <Icon name="search" size={16}/>
-          <input value={query} onChange={e=>onSearch(e.target.value)} placeholder="Search requests, clients, technicians…"/>
-          <span className="muted" style={{fontSize:11, padding:'2px 6px', border:'1px solid var(--border)', borderRadius:5}}>⌘K</span>
-        </div>
+        <nav style={{display:'flex',alignItems:'center',gap:4}}>
+          {breadcrumbs.map((c,i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <Icon name="chevright" size={12} style={{color:'var(--muted-foreground)',opacity:.5}}/>}
+              {c.onClick
+                ? <button onClick={c.onClick} style={{background:'none',border:'none',cursor:'pointer',
+                    fontSize:13,color:'var(--muted-foreground)',padding:'2px 4px',borderRadius:4,fontWeight:500}}
+                    onMouseEnter={e=>e.currentTarget.style.color='var(--foreground)'}
+                    onMouseLeave={e=>e.currentTarget.style.color='var(--muted-foreground)'}>{c.label}</button>
+                : <span style={{fontSize:13,fontWeight:600,color:'var(--foreground)',padding:'2px 4px'}}>{c.label}</span>
+              }
+            </React.Fragment>
+          ))}
+        </nav>
+      </div>
+      <div className="search">
+        <Icon name="search" size={16}/>
+        <input value={query} onChange={e=>onSearch(e.target.value)} placeholder="Search…"/>
+        <span className="muted" style={{fontSize:11,padding:'2px 6px',border:'1px solid var(--border)',borderRadius:5}}>⌘K</span>
       </div>
       <button className="btn btn-primary" onClick={onAdd}><Icon name="plus" size={16}/>New Survey Request</button>
       <button className="icon-btn" onClick={() => setTheme(theme==='light'?'dark':'light')} title="Toggle theme">
@@ -1072,10 +1086,6 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
       <div className="card" style={{marginBottom:20,padding:'20px 24px'}}>
         <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
           <div>
-            <button className="btn btn-ghost" onClick={onClose}
-              style={{padding:'0 0 10px 0',fontSize:12,color:'var(--muted-foreground)'}}>
-              <Icon name="chevleft" size={13}/>Back
-            </button>
             <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
               <span style={{fontSize:11,fontWeight:700,background:'var(--accent)',color:'var(--muted-foreground)',
                 padding:'3px 8px',borderRadius:6,letterSpacing:'.04em'}}>{req.id}</span>
@@ -2383,6 +2393,21 @@ function App() {
 
   const go = (r) => setRoute(r);
 
+  const breadcrumbs = (() => {
+    const routeLabel = NAV_DEFS[route]?.label || 'Home';
+    const homeClears = () => { setDetail(null); setTechDetail(null); setClientDetail(null); setCpmDetail(null); setTenantDetail(null); setRoute('home'); };
+    const hasDetail  = detail || techDetail || clientDetail || cpmDetail || tenantDetail;
+    const home       = { label:'Home', onClick: route==='home' && !hasDetail ? null : homeClears };
+    const routeCrumb = route !== 'home' ? { label:routeLabel, onClick: hasDetail ? ()=>{ setDetail(null); setTechDetail(null); setClientDetail(null); setCpmDetail(null); setTenantDetail(null); } : null } : null;
+    const base       = [home, routeCrumb].filter(Boolean);
+    if (detail)       return [...base, { label: detail.id }];
+    if (techDetail)   return [...base, { label: techDetail.name }];
+    if (clientDetail) return [...base, { label: clientDetail.name }];
+    if (cpmDetail)    return [...base, { label: cpmDetail.name }];
+    if (tenantDetail) return [...base, { label: tenantDetail.name }];
+    return base;
+  })();
+
   // override status from local edits
   const reqsView = REQUESTS.map(r => reqOverrides[r.id] ? {...r, status: reqOverrides[r.id]} : r);
 
@@ -2414,7 +2439,7 @@ function App() {
     <div className="app" data-screen-label={NAV_DEFS[route]?.label || 'CrewLink'}>
       <Sidebar role={role} route={route} setRoute={setRoute} collapsed={collapsed} setCollapsed={setCollapsed}/>
       <div style={{display:'flex', flexDirection:'column', minWidth:0, height:'100vh', overflow:'hidden'}}>
-        <Header role={role} setRole={setRole} theme={theme} setTheme={setTheme} onAdd={()=>setShowAdd(true)} onSearch={setQuery} query={query} onSignOut={()=>setView('signin')} setView={setView}/>
+        <Header role={role} setRole={setRole} theme={theme} setTheme={setTheme} onAdd={()=>setShowAdd(true)} onSearch={setQuery} query={query} onSignOut={()=>setView('signin')} setView={setView} breadcrumbs={breadcrumbs}/>
         <main className="main" style={route==='calendar'?{padding:0,overflow:'hidden',position:'relative',flex:1,minHeight:0}:{}}>{content}</main>
       </div>
       {showAdd && <AddRequestModal onClose={()=>setShowAdd(false)} onSave={(f)=>{setShowAdd(false); showToast('Survey request created');}}/>}
