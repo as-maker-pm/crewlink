@@ -1049,10 +1049,9 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
     <div>
       <PageHead title={req.id} sub={req.service}
         right={<>
-          <button className="btn btn-ghost" onClick={onClose}><Icon name="chevleft" size={14}/>Back</button>
           <button className="btn btn-outline"><Icon name="edit" size={14}/>Edit</button>
           {req.status !== 'Cancelled' && req.status !== 'Completed' &&
-            <button className="btn btn-outline" style={{color:'var(--destructive)'}} onClick={()=>setShowCancel(true)}>
+            <button className="btn btn-danger" onClick={()=>setShowCancel(true)}>
               <Icon name="x" size={14}/>Cancel
             </button>}
           {req.status !== 'Completed' &&
@@ -1073,6 +1072,10 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
       <div className="card" style={{marginBottom:20,padding:'20px 24px'}}>
         <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
           <div>
+            <button className="btn btn-ghost" onClick={onClose}
+              style={{padding:'0 0 10px 0',fontSize:12,color:'var(--muted-foreground)'}}>
+              <Icon name="chevleft" size={13}/>Back
+            </button>
             <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
               <span style={{fontSize:11,fontWeight:700,background:'var(--accent)',color:'var(--muted-foreground)',
                 padding:'3px 8px',borderRadius:6,letterSpacing:'.04em'}}>{req.id}</span>
@@ -1088,7 +1091,7 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
               color:'var(--muted-foreground)',marginBottom:4}}>Scheduled for</div>
             <div style={{fontSize:16,fontWeight:700}}>{req.date}</div>
             <div style={{fontSize:13,color:'var(--muted-foreground)',marginTop:2}}>
-              {req.time} &nbsp;·&nbsp; {req.slotMinutes||60} min
+              {fmt12(req.time)} &nbsp;·&nbsp; {req.slotMinutes||60} min
             </div>
             <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:10,display:'flex',
               alignItems:'center',gap:4,justifyContent:'flex-end'}}>
