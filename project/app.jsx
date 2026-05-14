@@ -760,11 +760,11 @@ const WeekView = ({ cursor, role, onOpen, onCreate }) => {
   return (
     <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
       {/* Day headers */}
-      <div style={{display:'flex',borderBottom:'1px solid var(--border)',paddingLeft:52,flexShrink:0}}>
+      <div style={{display:'flex',borderBottom:'1px solid var(--border)',paddingLeft:52,height:46,flexShrink:0}}>
         {days.map(d=>{
           const k=d.toISOString().slice(0,10), isT=k===TODAY_STR;
           return (
-            <div key={k} style={{flex:1,padding:'5px 0',textAlign:'center',borderRight:'1px solid var(--border)'}}>
+            <div key={k} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2,textAlign:'center',borderRight:'1px solid var(--border)'}}>
               <div style={{fontSize:10,fontWeight:600,color:'var(--muted-foreground)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:2}}>
                 {d.toLocaleString('en',{weekday:'short'})}
               </div>
@@ -780,7 +780,7 @@ const WeekView = ({ cursor, role, onOpen, onCreate }) => {
         })}
       </div>
       {/* Scrollable body */}
-      <div style={{display:'flex',overflowY:'auto',overflowX:'auto',flex:1,minHeight:0}}>
+      <div style={{display:'flex',overflowY:'auto',overflowX:'auto',height:'calc(100vh - 172px)'}}>
         <TimeGutter/>
         {days.map(d=>{
           const k=d.toISOString().slice(0,10);
@@ -807,9 +807,9 @@ const DayView = ({ cursor, role, onOpen, onCreate }) => {
   return (
     <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
       {/* Day header */}
-      <div style={{display:'flex',borderBottom:'1px solid var(--border)',paddingLeft:52,flexShrink:0}}>
+      <div style={{display:'flex',borderBottom:'1px solid var(--border)',paddingLeft:52,height:46,flexShrink:0}}>
         {(()=>{const isT=k===TODAY_STR; return (
-          <div style={{flex:1,padding:'5px 0',textAlign:'center'}}>
+          <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2}}>
             <div style={{fontSize:10,fontWeight:600,color:'var(--muted-foreground)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:2}}>
               {cursor.toLocaleString('en',{weekday:'short'})}
             </div>
@@ -829,7 +829,7 @@ const DayView = ({ cursor, role, onOpen, onCreate }) => {
           <div><strong>Scheduling conflict</strong> — two jobs overlap at 13:00. <a href="#" style={{color:'inherit',fontWeight:600}}>Reassign →</a></div>
         </div>
       )}
-      <div style={{display:'flex',overflowY:'auto',flex:1,minHeight:0}}>
+      <div style={{display:'flex',overflowY:'auto',height:'calc(100vh - 172px)'}}>
         <TimeGutter/>
         <DayColumn dayKey={k} events={evs} bufs={bufs} onOpen={onOpen} onCreate={onCreate} isToday={k===TODAY_STR}/>
       </div>
@@ -865,7 +865,7 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
   return (
     <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',overflow:'hidden',background:'var(--card)'}}>
       {/* Single unified toolbar */}
-      <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 20px',flexWrap:'wrap',flexShrink:0,borderBottom:'1px solid var(--border)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'0 20px',height:52,flexShrink:0,borderBottom:'1px solid var(--border)'}}>
         <div className="row" style={{gap:4}}>
           <button className="icon-btn" style={{width:32,height:32}} onClick={()=>shift(-1)}><Icon name="chevleft" size={16}/></button>
           <button className="btn btn-outline btn-sm" onClick={()=>setCursor(new Date(2025,10,10))}>Today</button>
