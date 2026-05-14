@@ -1042,9 +1042,6 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
     </div>
   );
 
-  const priColor = {High:'var(--destructive)',Low:'var(--muted-foreground)',Normal:'var(--warning)'};
-  const priBg    = {High:'rgba(239,68,68,0.1)',Low:'var(--accent)',Normal:'rgba(245,158,11,0.1)'};
-
   return (
     <div>
       <PageHead title={req.id} sub={req.service}
@@ -1073,24 +1070,19 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
       <div className="card" style={{marginBottom:20,padding:'20px 24px'}}>
         <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
           <div>
-            <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10,flexWrap:'wrap'}}>
+            <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
               <span style={{fontSize:11,fontWeight:700,background:'var(--accent)',color:'var(--muted-foreground)',
                 padding:'3px 8px',borderRadius:6,letterSpacing:'.04em'}}>{req.id}</span>
               {statusBadge(req.status)}
-              <span style={{fontSize:11,fontWeight:700,padding:'3px 8px',borderRadius:6,
-                color:priColor[req.priority]||'var(--muted-foreground)',
-                background:priBg[req.priority]||'var(--accent)'}}>
-                {req.priority} priority
-              </span>
             </div>
             <h2 style={{fontSize:22,fontWeight:800,margin:0,lineHeight:1.15}}>{req.service}</h2>
-            <div className="muted" style={{fontSize:13,marginTop:5,display:'flex',alignItems:'center',gap:5}}>
+            <div className="muted" style={{fontSize:13,marginTop:6,display:'flex',alignItems:'center',gap:5}}>
               <Icon name="pin" size={12}/>{req.address}
             </div>
           </div>
           <div style={{textAlign:'right',flexShrink:0}}>
             <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
-              color:'var(--muted-foreground)',marginBottom:3}}>Scheduled for</div>
+              color:'var(--muted-foreground)',marginBottom:4}}>Scheduled for</div>
             <div style={{fontSize:16,fontWeight:700}}>{req.date}</div>
             <div style={{fontSize:13,color:'var(--muted-foreground)',marginTop:2}}>
               {req.time} &nbsp;·&nbsp; {req.slotMinutes||60} min
@@ -1158,25 +1150,6 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
             }
           </div>
 
-          {/* Photos */}
-          <div className="card">
-            <div className="card-h">
-              <h3>Photos & files</h3>
-              <button className="btn btn-outline btn-sm"><Icon name="upload" size={14}/>Upload</button>
-            </div>
-            {req.photos === 0
-              ? <div style={{padding:'32px 0',textAlign:'center',border:'1px dashed var(--border)',
-                  borderRadius:10}} className="muted">No photos or files uploaded yet</div>
-              : <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
-                  {Array.from({length:req.photos}).map((_,i) => (
-                    <div key={i} style={{aspectRatio:'1',background:'var(--muted)',borderRadius:8,
-                      display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      <Icon name="file" size={22}/>
-                    </div>
-                  ))}
-                </div>
-            }
-          </div>
         </div>
 
         {/* ── RIGHT SIDEBAR ── */}
@@ -1227,25 +1200,24 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
             </div>
           )}
 
-          {/* Status */}
+          {/* Status — read-only, auto-managed */}
           <div className="card">
             <div className="card-h"><h3>Status</h3></div>
-            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            <div style={{display:'flex',flexDirection:'column',gap:5}}>
               {STATUSES.map(s => (
-                <div key={s}
-                  onClick={()=>s==='Cancelled'?setShowCancel(true):(onStatusChange(req,s),toast(`Status → ${s}`))}
-                  style={{padding:'9px 12px',border:'1px solid',cursor:'pointer',borderRadius:8,
-                    display:'flex',alignItems:'center',justifyContent:'space-between',
-                    background:req.status===s?'var(--accent)':'transparent',
-                    borderColor:req.status===s?'var(--primary)':'var(--border)'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:9}}>
-                    <div style={{width:7,height:7,borderRadius:'50%',flexShrink:0,
-                      background:req.status===s?'var(--primary)':'var(--border)'}}/>
-                    <span style={{fontSize:13,fontWeight:req.status===s?600:400}}>{s}</span>
-                  </div>
+                <div key={s} style={{padding:'8px 12px',borderRadius:8,
+                  display:'flex',alignItems:'center',gap:9,
+                  background:req.status===s?'var(--accent)':'transparent',
+                  opacity:req.status===s?1:0.4}}>
+                  <div style={{width:7,height:7,borderRadius:'50%',flexShrink:0,
+                    background:req.status===s?'var(--primary)':'var(--border)'}}/>
+                  <span style={{fontSize:13,fontWeight:req.status===s?600:400}}>{s}</span>
                   {req.status===s && <Icon name="check" size={13}/>}
                 </div>
               ))}
+            </div>
+            <div className="muted" style={{fontSize:11,marginTop:10,display:'flex',alignItems:'center',gap:4}}>
+              <Icon name="clock" size={11}/>Status updates automatically
             </div>
           </div>
 
