@@ -1101,7 +1101,7 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
             <div style={{textAlign:'right'}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
                 color:'var(--muted-foreground)',marginBottom:3}}>Booking ID</div>
-              <span style={{fontSize:8,fontWeight:700,color:'var(--foreground)'}}>{req.id}</span>
+              <span style={{fontSize:12,fontWeight:700,color:'var(--foreground)'}}>{req.id}</span>
             </div>
             <div style={{marginTop:32}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',
