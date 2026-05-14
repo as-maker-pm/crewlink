@@ -1103,10 +1103,11 @@ const RequestDetail = ({ req, onClose, onStatusChange, toast }) => {
           <div className="card">
             <div className="card-h"><h3>Homeowner</h3></div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-              <InfoTile icon="users" label="Name"    value={req.homeownerName||req.client}/>
-              <InfoTile icon="phone" label="Contact" value={req.phone}/>
-              <InfoTile icon="mail"  label="Email"   value={req.email}/>
-              <InfoTile icon="pin"   label="Address" value={req.address} wide/>
+              <InfoTile icon="users"     label="Name"         value={req.homeownerName||req.client}/>
+              <InfoTile icon="phone"     label="Contact"      value={req.phone}/>
+              <InfoTile icon="mail"      label="Email"        value={req.email}/>
+              <InfoTile icon="clipboard" label="Service type" value={req.service}/>
+              <InfoTile icon="pin"       label="Address"      value={req.address} wide/>
             </div>
           </div>
 
