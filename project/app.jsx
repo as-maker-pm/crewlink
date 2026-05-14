@@ -185,7 +185,7 @@ const NAV_BY_ROLE = {
   super_admin: ['home','tenants','plans','calendar','settings'],
   admin:       ['home','calendar','requests','technicians','clients','tenant_services','plan_usage','settings'],
   cpm:         ['home','calendar','requests','technicians','clients','settings'],
-  tech:        ['home','calendar','my_requests','availability','settings'],
+  tech:        ['home','calendar','my_requests','settings'],
 };
 
 const NAV_DEFS = {
@@ -573,7 +573,7 @@ const EV_COLORS = {
   Cancelled: {bg:'rgba(100,100,100,0.07)',bd:'#9ca3af', fg:'#6b7280'},
 };
 
-const DayColumn = ({ dayKey, events, bufs, onOpen, onCreate, isToday }) => {
+const DayColumn = ({ dayKey, events, bufs, blockSlots=[], onOpen, onCreate, isToday }) => {
   const ref    = useRef(null);
   const [drag, setDrag]   = useState(null);
   const [hover, setHover] = useState(null);
@@ -627,6 +627,23 @@ const DayColumn = ({ dayKey, events, bufs, onOpen, onCreate, isToday }) => {
           <span style={{fontSize:10,fontWeight:600,color:'var(--primary)',opacity:.7}}>+ {hover}</span>
         </div>
       )}
+
+      {/* Blocked slots */}
+      {blockSlots.map(b => {
+        const top  = timeToY(b.allDay ? '00:00' : b.start);
+        const bot  = timeToY(b.allDay ? `${String(CAL_END).padStart(2,'0')}:00` : b.end);
+        return (
+          <div key={b.id} style={{position:'absolute',top:top,height:Math.max(18,bot-top),
+            left:0,right:0,pointerEvents:'none',zIndex:4,
+            background:'repeating-linear-gradient(45deg,rgba(239,68,68,0.07),rgba(239,68,68,0.07) 4px,transparent 4px,transparent 10px)',
+            borderLeft:'3px solid rgba(239,68,68,0.55)'}}>
+            <span style={{fontSize:9,fontWeight:700,color:'var(--destructive)',padding:'2px 6px',
+              background:'rgba(239,68,68,0.08)',display:'inline-block'}}>
+              BLOCKED{b.reason?` · ${b.reason}`:''}
+            </span>
+          </div>
+        );
+      })}
 
       {/* Buffer blocks */}
       {bufs.map(b => (
@@ -761,7 +778,7 @@ const TimeGutter = () => (
   </div>
 );
 
-const WeekView = ({ cursor, role, onOpen, onCreate }) => {
+const WeekView = ({ cursor, role, onOpen, onCreate, blocks=[] }) => {
   const start=new Date(cursor); start.setDate(cursor.getDate()-cursor.getDay());
   const days=Array.from({length:7},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);return d;});
   const visible = calFilterByRole(REQUESTS, role);
@@ -800,14 +817,15 @@ const WeekView = ({ cursor, role, onOpen, onCreate }) => {
             {id:`bb${ev.id}`,time:minToTime(Math.max(CAL_START*60,timeToMin(ev.time)-30)),slotMinutes:30},
             {id:`ba${ev.id}`,time:addMinutes(ev.time,ev.slotMinutes||60),slotMinutes:30},
           ]):[];
-          return <DayColumn key={k} dayKey={k} events={evs} bufs={bufs} onOpen={onOpen} onCreate={onCreate} isToday={k===TODAY_STR}/>;
+          const bls = blocks.filter(b=>b.date===k);
+          return <DayColumn key={k} dayKey={k} events={evs} bufs={bufs} blockSlots={bls} onOpen={onOpen} onCreate={onCreate} isToday={k===TODAY_STR}/>;
         })}
       </div>
     </div>
   );
 };
 
-const DayView = ({ cursor, role, onOpen, onCreate }) => {
+const DayView = ({ cursor, role, onOpen, onCreate, blocks=[] }) => {
   const k   = cursor.toISOString().slice(0,10);
   const scrollRef = useRef(null);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = timeToY(`${String(WORK_START).padStart(2,'0')}:00`); }, []);
@@ -844,7 +862,7 @@ const DayView = ({ cursor, role, onOpen, onCreate }) => {
       )}
       <div ref={scrollRef} style={{display:'flex',overflowY:'auto',height:'calc(100vh - 172px)'}}>
         <TimeGutter/>
-        <DayColumn dayKey={k} events={evs} bufs={bufs} onOpen={onOpen} onCreate={onCreate} isToday={k===TODAY_STR}/>
+        <DayColumn dayKey={k} blockSlots={blocks.filter(b=>b.date===k)} events={evs} bufs={bufs} onOpen={onOpen} onCreate={onCreate} isToday={k===TODAY_STR}/>
       </div>
     </div>
   );
@@ -854,6 +872,9 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
   const [view, setView]         = useState('week');
   const [cursor, setCursor]     = useState(new Date(2025,10,10));
   const [createAt, setCreateAt] = useState(null);
+  const [showAvail, setShowAvail] = useState(role.key === 'tech');
+  const [schedule, setSchedule]   = useState(INIT_SCHEDULE);
+  const [blocks, setBlocks]       = useState(INIT_BLOCKS);
 
   const shift = n => {
     const d=new Date(cursor);
@@ -887,9 +908,10 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
         <h2 style={{fontSize:17,fontWeight:700,margin:'0 4px'}}>{label}</h2>
         <span style={{flex:1}}/>
         {role.key==='tech' && (
-          <span style={{fontSize:11,color:'var(--muted-foreground)',display:'flex',alignItems:'center',gap:5}}>
-            <Icon name="clock" size={12}/>Buffer times shown
-          </span>
+          <button className={`btn btn-sm ${showAvail?'btn-primary':'btn-outline'}`}
+            onClick={()=>setShowAvail(v=>!v)}>
+            <Icon name="clock" size={13}/>{showAvail?'Hide availability':'Availability'}
+          </button>
         )}
         <div className="seg">
           <button className={view==='month'?'active':''} onClick={()=>setView('month')}>Month</button>
@@ -899,11 +921,16 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
         <button className="btn btn-primary btn-sm" onClick={onAdd}><Icon name="plus" size={14}/>New Booking</button>
       </div>
 
-      {/* Calendar grid — fills remaining height */}
-      <div style={{flex:1,minHeight:0,overflow:'hidden',display:'flex',flexDirection:'column'}}>
-        {view==='month' && <MonthView cursor={cursor} role={role} setView={setView} setCursor={setCursor} openDetail={openDetail}/>}
-        {view==='week'  && <WeekView  cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt}/>}
-        {view==='day'   && <DayView   cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt}/>}
+      {/* Calendar grid — fills remaining height, row layout for optional sidebar */}
+      <div style={{flex:1,minHeight:0,overflow:'hidden',display:'flex',flexDirection:'row'}}>
+        <div style={{flex:1,minWidth:0,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+          {view==='month' && <MonthView cursor={cursor} role={role} setView={setView} setCursor={setCursor} openDetail={openDetail}/>}
+          {view==='week'  && <WeekView  cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt} blocks={blocks}/>}
+          {view==='day'   && <DayView   cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt} blocks={blocks}/>}
+        </div>
+        {showAvail && role.key==='tech' && (
+          <AvailSidebar schedule={schedule} setSchedule={setSchedule} blocks={blocks} setBlocks={setBlocks}/>
+        )}
       </div>
 
       {/* Lightweight create popover */}
@@ -919,6 +946,15 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
               <Icon name="clock" size={14}/>
               <span style={{fontSize:13,fontWeight:600}}>{createAt.time} – {createAt.endTime}</span>
             </div>
+            {role.key==='tech' && (
+              <button className="btn btn-outline" style={{width:'100%',justifyContent:'center',marginBottom:8,borderColor:'rgba(239,68,68,0.4)',color:'var(--destructive)'}}
+                onClick={()=>{
+                  setBlocks(bs=>[...bs,{id:`tb${Date.now()}`,date:createAt.date,allDay:false,start:createAt.time,end:createAt.endTime,reason:''}]);
+                  setCreateAt(null);
+                }}>
+                <Icon name="x" size={14}/>Block this time
+              </button>
+            )}
             <button className="btn btn-primary" style={{width:'100%',justifyContent:'center'}}
               onClick={()=>{setCreateAt(null);onAdd();}}>
               <Icon name="plus" size={14}/>Create booking
@@ -2003,6 +2039,13 @@ const TIME_OPTS = (() => {
   return opts;
 })();
 
+const TimeSelect = ({value, onChange, style={}}) => (
+  <select className="input" value={value} onChange={e=>onChange(e.target.value)}
+    style={{padding:'5px 8px',fontSize:12,cursor:'pointer',...style}}>
+    {TIME_OPTS.map(o=><option key={o.val} value={o.val}>{o.label}</option>)}
+  </select>
+);
+
 const BlockTimeModal = ({ onClose, onSave }) => {
   const [date,   setDate]   = useState('');
   const [allDay, setAllDay] = useState(false);
@@ -2060,113 +2103,103 @@ const BlockTimeModal = ({ onClose, onSave }) => {
     </div>
   );
 };
+/* ---------- AVAILABILITY SIDEBAR ---------- */
+const INIT_SCHEDULE = {
+  mon:{enabled:true, slots:[{start:'09:00',end:'17:00'}]},
+  tue:{enabled:true, slots:[{start:'09:00',end:'17:00'}]},
+  wed:{enabled:true, slots:[{start:'09:00',end:'17:00'}]},
+  thu:{enabled:true, slots:[{start:'09:00',end:'17:00'}]},
+  fri:{enabled:true, slots:[{start:'09:00',end:'17:00'}]},
+  sat:{enabled:false,slots:[]},
+  sun:{enabled:false,slots:[]},
+};
+const INIT_BLOCKS = [
+  {id:'tb1',date:'2025-11-15',allDay:false,start:'10:00',end:'12:00',reason:'Doctor appointment'},
+  {id:'tb2',date:'2025-11-20',allDay:true, start:'09:00',end:'17:00',reason:'Personal day off'},
+];
 
-const TechAvailability = () => {
-  const [schedule, setSchedule] = useState({
-    mon: { enabled:true,  slots:[{start:'09:00',end:'17:00'}] },
-    tue: { enabled:true,  slots:[{start:'09:00',end:'17:00'}] },
-    wed: { enabled:true,  slots:[{start:'09:00',end:'17:00'}] },
-    thu: { enabled:true,  slots:[{start:'09:00',end:'17:00'}] },
-    fri: { enabled:true,  slots:[{start:'09:00',end:'17:00'}] },
-    sat: { enabled:false, slots:[] },
-    sun: { enabled:false, slots:[] },
-  });
-  const [blocks, setBlocks] = useState([
-    {id:'tb1',date:'2025-11-15',allDay:false,start:'10:00',end:'12:00',reason:'Doctor appointment'},
-    {id:'tb2',date:'2025-11-20',allDay:true, start:'09:00',end:'17:00',reason:'Personal day off'},
-    {id:'tb3',date:'2025-11-26',allDay:false,start:'13:00',end:'15:30',reason:''},
-  ]);
-  const [showModal, setShowModal] = useState(false);
-  const [saved, setSaved] = useState(false);
-
-  const toggleDay = day => setSchedule(s => ({
-    ...s, [day]: {...s[day], enabled:!s[day].enabled, slots: !s[day].enabled ? [{start:'09:00',end:'17:00'}] : s[day].slots}
-  }));
-  const updateSlot = (day,i,field,val) => setSchedule(s => ({
-    ...s, [day]: {...s[day], slots: s[day].slots.map((sl,j)=>j===i?{...sl,[field]:val}:sl)}
-  }));
-  const addSlot = day => setSchedule(s => ({
-    ...s, [day]: {...s[day], slots:[...s[day].slots,{start:'09:00',end:'17:00'}]}
-  }));
-  const removeSlot = (day,i) => {
-    const slots = schedule[day].slots.filter((_,j)=>j!==i);
-    setSchedule(s => ({...s, [day]: {...s[day], slots, enabled: slots.length > 0}}));
-  };
-  const addBlock  = b => { setBlocks(bs=>[...bs,{...b,id:`tb${Date.now()}`}]); setShowModal(false); };
-  const rmBlock   = id => setBlocks(bs=>bs.filter(b=>b.id!==id));
-  const save = () => { setSaved(true); setTimeout(()=>setSaved(false),2000); };
+const AvailSidebar = ({ schedule, setSchedule, blocks, setBlocks }) => {
+  const [editMode,   setEditMode]   = useState(false);
+  const [showModal,  setShowModal]  = useState(false);
 
   const fmt12 = t => {
     if (!t) return '';
     const [h,m] = t.split(':').map(Number);
-    const h12 = h === 0 ? 12 : h > 12 ? h-12 : h;
-    return `${h12}:${String(m).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`;
+    const h12 = h===0?12:h>12?h-12:h;
+    return `${h12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`;
   };
   const fmtDate = d => new Date(d+'T12:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
 
-  const TimeSelect = ({value, onChange}) => (
-    <select className="input" value={value} onChange={e=>onChange(e.target.value)}
-      style={{padding:'7px 10px',fontSize:13,cursor:'pointer',minWidth:120}}>
-      {TIME_OPTS.map(o=><option key={o.val} value={o.val}>{o.label}</option>)}
-    </select>
-  );
+  const toggleDay  = day => setSchedule(s=>({...s,[day]:{...s[day],enabled:!s[day].enabled,
+    slots:!s[day].enabled?[{start:'09:00',end:'17:00'}]:s[day].slots}}));
+  const updateSlot = (day,i,f,v) => setSchedule(s=>({...s,[day]:{...s[day],
+    slots:s[day].slots.map((sl,j)=>j===i?{...sl,[f]:v}:sl)}}));
+  const addSlot    = day => setSchedule(s=>({...s,[day]:{...s[day],
+    slots:[...s[day].slots,{start:'09:00',end:'17:00'}]}}));
+  const removeSlot = (day,i) => {
+    const slots = schedule[day].slots.filter((_,j)=>j!==i);
+    setSchedule(s=>({...s,[day]:{...s[day],slots,enabled:slots.length>0}}));
+  };
+  const addBlock = b => { setBlocks(bs=>[...bs,{...b,id:`tb${Date.now()}`}]); setShowModal(false); };
+  const rmBlock  = id => setBlocks(bs=>bs.filter(b=>b.id!==id));
+
+  const ROW = {borderBottom:'1px solid var(--border)'};
+  const LABEL = {fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em',color:'var(--muted-foreground)'};
 
   return (
-    <div>
-      <PageHead title="My Availability" sub="Set your working hours and block off personal time"
-        right={
-          <button className="btn btn-primary" onClick={save} style={{minWidth:140,justifyContent:'center'}}>
-            {saved ? <><Icon name="check" size={14}/>Saved!</> : <><Icon name="check" size={14}/>Save changes</>}
-          </button>
-        }
-      />
+    <div style={{width:260,flexShrink:0,borderLeft:'1px solid var(--border)',display:'flex',flexDirection:'column',background:'var(--card)',overflow:'hidden'}}>
+      {/* Header */}
+      <div style={{padding:'0 14px',height:46,display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid var(--border)',flexShrink:0}}>
+        <span style={{fontSize:13,fontWeight:700,display:'flex',alignItems:'center',gap:7}}>
+          <Icon name="clock" size={14}/>My Availability
+        </span>
+        <button className={`btn btn-sm ${editMode?'btn-primary':'btn-outline'}`} style={{padding:'4px 10px'}}
+          onClick={()=>setEditMode(v=>!v)}>
+          {editMode ? 'Done' : <><Icon name="edit" size={12}/>Edit hours</>}
+        </button>
+      </div>
 
-      <div className="detail-grid" style={{alignItems:'start'}}>
+      {/* Scrollable body */}
+      <div style={{flex:1,overflowY:'auto',padding:'0'}}>
 
-        {/* ── Left: Weekly schedule ── */}
-        <div className="card" style={{padding:0,overflow:'hidden'}}>
-          <div style={{padding:'16px 20px',borderBottom:'1px solid var(--border)'}}>
-            <h3 style={{fontSize:15,fontWeight:700}}>Weekly Hours</h3>
-            <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>Set which days and hours you're available for bookings</div>
-          </div>
-
-          {DAYS_OF_WEEK.map(day => {
-            const d = schedule[day];
+        {/* Weekly schedule */}
+        <div style={{padding:'10px 14px 6px',borderBottom:'2px solid var(--border)'}}>
+          <div style={{...LABEL,marginBottom:8}}>Weekly Schedule</div>
+          {DAYS_OF_WEEK.map(day=>{
+            const d=schedule[day];
             return (
-              <div key={day} style={{borderBottom:'1px solid var(--border)',
-                background: d.enabled ? 'transparent' : 'var(--muted)'}}>
-
-                {/* Day header row */}
-                <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 20px'}}>
+              <div key={day} style={{...ROW,paddingBottom:editMode&&d.enabled?8:0}}>
+                {/* Day header */}
+                <div style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0'}}>
                   <Toggle on={d.enabled} onChange={()=>toggleDay(day)}/>
-                  <span style={{fontSize:13,fontWeight:700,flex:1,
-                    color: d.enabled ? 'var(--foreground)' : 'var(--muted-foreground)'}}>
-                    {DAY_LABEL[day]}
+                  <span style={{fontSize:12,fontWeight:600,width:32,
+                    color:d.enabled?'var(--foreground)':'var(--muted-foreground)'}}>
+                    {DAY_LABEL[day].slice(0,3)}
                   </span>
-                  {!d.enabled && <span style={{fontSize:12,color:'var(--muted-foreground)'}}>Unavailable</span>}
+                  {!editMode && (
+                    <span style={{fontSize:11,color:d.enabled?'var(--foreground)':'var(--muted-foreground)',flex:1}}>
+                      {d.enabled&&d.slots.length
+                        ? d.slots.map(sl=>`${fmt12(sl.start)}–${fmt12(sl.end)}`).join(', ')
+                        : 'Unavailable'}
+                    </span>
+                  )}
                 </div>
-
-                {/* Time slots — only when day is enabled */}
-                {d.enabled && (
-                  <div style={{padding:'0 20px 14px 62px',display:'flex',flexDirection:'column',gap:8}}>
-                    {d.slots.map((sl,i) => (
-                      <div key={i} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                        <TimeSelect value={sl.start} onChange={v=>updateSlot(day,i,'start',v)}/>
-                        <span style={{color:'var(--muted-foreground)',fontSize:13,fontWeight:500}}>to</span>
-                        <TimeSelect value={sl.end}   onChange={v=>updateSlot(day,i,'end',v)}/>
-                        {d.slots.length > 1 && (
-                          <button className="icon-btn" style={{width:30,height:30,color:'var(--muted-foreground)'}}
-                            onClick={()=>removeSlot(day,i)}>
-                            <Icon name="trash" size={13}/>
-                          </button>
-                        )}
+                {/* Edit slots */}
+                {editMode && d.enabled && (
+                  <div style={{paddingLeft:40,paddingBottom:6,display:'flex',flexDirection:'column',gap:5}}>
+                    {d.slots.map((sl,i)=>(
+                      <div key={i} style={{display:'flex',alignItems:'center',gap:4}}>
+                        <TimeSelect value={sl.start} onChange={v=>updateSlot(day,i,'start',v)} style={{flex:1}}/>
+                        <span style={{fontSize:11,color:'var(--muted-foreground)'}}>–</span>
+                        <TimeSelect value={sl.end}   onChange={v=>updateSlot(day,i,'end',v)}   style={{flex:1}}/>
+                        {d.slots.length>1&&<button className="icon-btn" style={{width:22,height:22}}
+                          onClick={()=>removeSlot(day,i)}><Icon name="x" size={10}/></button>}
                       </div>
                     ))}
                     <button onClick={()=>addSlot(day)}
-                      style={{alignSelf:'flex-start',background:'none',border:'1px dashed var(--border)',
-                        borderRadius:8,padding:'5px 12px',fontSize:12,fontWeight:600,
-                        color:'var(--primary)',cursor:'pointer',display:'flex',alignItems:'center',gap:5,marginTop:2}}>
-                      <Icon name="plus" size={12}/>Add time range
+                      style={{background:'none',border:'none',padding:0,color:'var(--primary)',
+                        fontSize:11,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
+                      <Icon name="plus" size={10}/>Add range
                     </button>
                   </div>
                 )}
@@ -2175,75 +2208,36 @@ const TechAvailability = () => {
           })}
         </div>
 
-        {/* ── Right column ── */}
-        <div style={{display:'flex',flexDirection:'column',gap:16}}>
-
-          {/* Timezone */}
-          <div className="card" style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:14}}>
-            <div style={{width:36,height:36,borderRadius:8,background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'var(--primary)'}}>
-              <Icon name="clock" size={16}/>
-            </div>
-            <div style={{flex:1}}>
-              <div style={{fontSize:13,fontWeight:600}}>America / New_York</div>
-              <div style={{fontSize:11,color:'var(--muted-foreground)',marginTop:1}}>All times shown in your local timezone</div>
-            </div>
-            <button className="btn btn-outline btn-sm">Change</button>
+        {/* Blocked times */}
+        <div style={{padding:'10px 14px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+            <span style={LABEL}>Blocked Times</span>
+            <button className="btn btn-primary btn-sm" style={{padding:'3px 9px',fontSize:11}}
+              onClick={()=>setShowModal(true)}>
+              <Icon name="plus" size={11}/>Block
+            </button>
           </div>
-
-          {/* Blocked times */}
-          <div className="card" style={{padding:0,overflow:'hidden'}}>
-            <div style={{padding:'16px 20px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <div>
-                <h3 style={{fontSize:15,fontWeight:700}}>Blocked Times</h3>
-                <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:2}}>One-off times you're unavailable</div>
+          {blocks.length===0
+            ? <p style={{fontSize:11,color:'var(--muted-foreground)',margin:'8px 0'}}>None — drag on the calendar to block a time.</p>
+            : [...blocks].sort((a,b)=>a.date.localeCompare(b.date)).map(bl=>(
+              <div key={bl.id} style={{...ROW,display:'flex',alignItems:'flex-start',gap:8,padding:'7px 0'}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:600}}>{fmtDate(bl.date)}</div>
+                  <div style={{fontSize:11,color:'var(--muted-foreground)'}}>
+                    {bl.allDay?'All day':`${fmt12(bl.start)} – ${fmt12(bl.end)}`}
+                    {bl.reason&&<span> · {bl.reason}</span>}
+                  </div>
+                </div>
+                <button className="icon-btn" style={{width:22,height:22,marginTop:1,flexShrink:0,color:'var(--muted-foreground)'}}
+                  onClick={()=>rmBlock(bl.id)}>
+                  <Icon name="trash" size={11}/>
+                </button>
               </div>
-              <button className="btn btn-primary btn-sm" onClick={()=>setShowModal(true)}>
-                <Icon name="plus" size={13}/>Block time
-              </button>
-            </div>
-            {blocks.length === 0
-              ? <div style={{padding:'28px 20px',textAlign:'center',color:'var(--muted-foreground)',fontSize:13}}>
-                  No blocked times — you're available during all scheduled hours.
-                </div>
-              : [...blocks].sort((a,b)=>a.date.localeCompare(b.date)).map(bl => (
-                <div key={bl.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 20px',borderBottom:'1px solid var(--border)'}}>
-                  <div style={{width:36,height:36,borderRadius:8,background:'rgba(239,68,68,0.08)',
-                    color:'var(--destructive)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                    <Icon name="x" size={15}/>
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:600}}>{fmtDate(bl.date)}</div>
-                    <div style={{fontSize:12,color:'var(--muted-foreground)',marginTop:1}}>
-                      {bl.allDay ? 'All day' : `${fmt12(bl.start)} – ${fmt12(bl.end)}`}
-                      {bl.reason && <span> · {bl.reason}</span>}
-                    </div>
-                  </div>
-                  <button className="icon-btn" style={{width:28,height:28,flexShrink:0,color:'var(--muted-foreground)'}}
-                    onClick={()=>rmBlock(bl.id)}>
-                    <Icon name="trash" size={13}/>
-                  </button>
-                </div>
-              ))
-            }
-          </div>
-
-          {/* Service radius */}
-          <div className="card">
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
-              <h3 style={{fontSize:14,fontWeight:700}}>Service Radius</h3>
-              <span className="badge badge-pri">250 mi</span>
-            </div>
-            <div style={{fontSize:12,color:'var(--muted-foreground)',marginBottom:12}}>Max distance you'll travel for a job</div>
-            <input type="range" min={25} max={500} step={25} defaultValue={250}
-              style={{width:'100%',accentColor:'var(--primary)'}}/>
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--muted-foreground)',marginTop:4}}>
-              <span>25 mi</span><span>500 mi</span>
-            </div>
-          </div>
-
+            ))
+          }
         </div>
-      </div>
 
+      </div>
       {showModal && <BlockTimeModal onClose={()=>setShowModal(false)} onSave={addBlock}/>}
     </div>
   );
@@ -2306,7 +2300,6 @@ function App() {
   else if (route === 'plans') content = <Plans/>;
   else if (route === 'plan_usage') content = <PlanUsage/>;
   else if (route === 'tenant_services') content = <TenantServices/>;
-  else if (route === 'availability') content = <TechAvailability/>;
   else if (route === 'settings') content = <Settings theme={theme} setTheme={setTheme}/>;
 
   if (view === 'signin')     return <SignIn onSignIn={()=>setView('app')} goForgot={()=>setView('forgot')}/>;
