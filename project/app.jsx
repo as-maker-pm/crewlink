@@ -1086,15 +1086,10 @@ const RequestsList = ({ openDetail, openAdd }) => {
                     <div style={{fontSize:11,color:'var(--muted-foreground)'}}>{r.email}</div>
                   </td>
                   <td><span className="muted" style={{fontSize:12}}>{r.service}</span></td>
-                  <td>
-                    <div className="row">
-                      <div className="avatar-sm">{r.tech.name.split(' ').map(n=>n[0]).join('')}</div>
-                      <span style={{fontSize:13}}>{r.tech.name}</span>
-                    </div>
-                  </td>
+                  <td><span style={{fontSize:13}}>{r.tech.name}</span></td>
                   <td>
                     {r.cpm
-                      ? <div><div style={{fontSize:13,fontWeight:500}}>{r.cpm.name}</div><div style={{fontSize:11,color:'var(--muted-foreground)'}}>{r.cpm.role}</div></div>
+                      ? <span style={{fontSize:13,fontWeight:500}}>{r.cpm.name}</span>
                       : <span className="muted">—</span>}
                   </td>
                   <td>{statusBadge(r.status)}</td>
