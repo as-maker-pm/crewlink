@@ -846,9 +846,9 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
   }, [view, cursor]);
 
   return (
-    <div style={{margin:'-24px',height:'calc(100vh - 74px)',display:'flex',flexDirection:'column',overflow:'hidden',background:'var(--background)'}}>
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',background:'var(--card)'}}>
       {/* Single unified toolbar */}
-      <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 20px',flexWrap:'wrap',flexShrink:0,borderBottom:'1px solid var(--border)',background:'var(--card)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 20px',flexWrap:'wrap',flexShrink:0,borderBottom:'1px solid var(--border)'}}>
         <div className="row" style={{gap:4}}>
           <button className="icon-btn" style={{width:32,height:32}} onClick={()=>shift(-1)}><Icon name="chevleft" size={16}/></button>
           <button className="btn btn-outline btn-sm" onClick={()=>setCursor(new Date(2025,10,10))}>Today</button>
@@ -870,7 +870,7 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
       </div>
 
       {/* Calendar grid — fills remaining height */}
-      <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column',background:'var(--card)'}}>
+      <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
         {view==='month' && <MonthView cursor={cursor} role={role} setView={setView} setCursor={setCursor} openDetail={openDetail}/>}
         {view==='week'  && <WeekView  cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt}/>}
         {view==='day'   && <DayView   cursor={cursor} role={role} onOpen={openDetail} onCreate={setCreateAt}/>}
@@ -2025,9 +2025,9 @@ function App() {
   return (
     <div className="app" data-screen-label={NAV_DEFS[route]?.label || 'CrewLink'}>
       <Sidebar role={role} route={route} setRoute={setRoute} collapsed={collapsed} setCollapsed={setCollapsed}/>
-      <div style={{display:'flex', flexDirection:'column', minWidth:0}}>
+      <div style={{display:'flex', flexDirection:'column', minWidth:0, height:'100%', overflow:'hidden'}}>
         <Header role={role} setRole={setRole} theme={theme} setTheme={setTheme} onAdd={()=>setShowAdd(true)} onSearch={setQuery} query={query} onSignOut={()=>setView('signin')} setView={setView}/>
-        <main className="main">{content}</main>
+        <main className="main" style={route==='calendar'?{padding:0,overflow:'hidden',display:'flex',flexDirection:'column'}:{}}>{content}</main>
       </div>
       {showAdd && <AddRequestModal onClose={()=>setShowAdd(false)} onSave={(f)=>{setShowAdd(false); showToast('Survey request created');}}/>}
       {toast && <div className="toast"><Icon name="check" size={16}/>{toast}</div>}

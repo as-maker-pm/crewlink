@@ -72,7 +72,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-primary); margin:0; font-weight:700; li
 button { font-family: inherit; cursor: pointer; }
 input, select, textarea { font-family: inherit; font-size: 14px; }
 ::-webkit-scrollbar { width: 0; height: 0; }
-.app { display:grid; grid-template-columns: auto 1fr; min-height:100vh; }
+.app { display:grid; grid-template-columns: auto 1fr; height:100vh; overflow:hidden; }
 
 /* Sidebar */
 .sb { background: var(--sidebar); border-right: 1px solid var(--sidebar-border); width: 240px; transition: width .2s ease; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
@@ -104,7 +104,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .role-dot { width:8px; height:8px; border-radius:50%; background: var(--success); }
 
 /* Layout */
-.main { padding: 24px; max-width: 100%; min-width: 0; }
+.main { padding: 24px; max-width: 100%; min-width: 0; overflow-y: auto; flex: 1; min-height: 0; }
 .page-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom: 20px; flex-wrap:wrap; }
 .page-head h1 { font-size: 22px; }
 .page-head .sub { color: var(--muted-foreground); font-size: 13px; margin-top: 4px; }
