@@ -2154,87 +2154,139 @@ const TechList = ({ openTech }) => {
   );
 };
 
-const TechDetail = ({ tech, onClose, openDetail }) => {
+const TechDayView = ({ dayKey, events, blocks=[] }) => {
+  const scrollRef = useRef(null);
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = timeToY(`${String(WORK_START).padStart(2,'0')}:00`);
+  }, [dayKey]);
+  return (
+    <div ref={scrollRef} style={{display:'flex', overflowY:'auto', height:340}}>
+      <TimeGutter/>
+      <DayColumn dayKey={dayKey} blockSlots={blocks} events={events} bufs={[]} onOpen={()=>{}} onCreate={()=>{}} isToday={dayKey===TODAY_STR}/>
+    </div>
+  );
+};
+
+const TechDetail = ({ tech, onClose, openDetail, role }) => {
   const myJobs = REQUESTS.filter(r => r.tech.id === tech.id);
+  const [cursor, setCursor] = useState(new Date(2025, 10, 10));
+  const [showAvail, setShowAvail] = useState(false);
+  const [schedule, setSchedule] = useState(INIT_SCHEDULE);
+  const [blocks, setBlocks] = useState(INIT_BLOCKS);
+
+  const isAdmin = role && (role.key === 'super_admin' || role.key === 'admin');
+  const shift = n => { const d = new Date(cursor); d.setDate(d.getDate() + n); setCursor(d); };
+  const dayKey = cursor.toISOString().slice(0, 10);
+  const dayLabel = cursor.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const dayEvents = REQUESTS.filter(r => r.date === dayKey && r.tech.id === tech.id);
+
   return (
     <div>
       <PageHead title={tech.name} sub={`${tech.spec} · ${tech.city}`}
         right={<>
           <button className="btn btn-ghost" onClick={onClose}><Icon name="chevleft" size={14}/>Back</button>
           <button className="btn btn-outline"><Icon name="edit" size={14}/>Edit</button>
-          <button className="btn btn-primary"><Icon name="calendar" size={14}/>View schedule</button>
+          {isAdmin && (
+            <button className={`btn btn-sm ${showAvail ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setShowAvail(v => !v)}>
+              <Icon name="clock" size={13}/>{showAvail ? 'Hide availability' : 'Availability'}
+            </button>
+          )}
         </>}
       />
-      <div className="detail-grid">
-        <div style={{display:'flex', flexDirection:'column', gap:18}}>
-          <div className="card">
-            <div className="stats" style={{marginBottom:0}}>
-              <Stat label="Jobs total" value={tech.jobs} icon="clipboard"/>
-              <Stat label="Completed" value={Math.floor(tech.jobs*0.85)} icon="check" iconColor="green"/>
-              <Stat label="On time" value="94%" icon="clock"/>
-            </div>
-          </div>
-          <div className="card">
-            <div className="card-h"><h3>Recent jobs</h3></div>
-            <table className="tbl">
-              <thead><tr><th>ID</th><th>Client</th><th>Service</th><th>Status</th><th>Date</th></tr></thead>
-              <tbody>{myJobs.slice(0,8).map(r => (
-                <tr key={r.id} onClick={()=>openDetail(r)}>
-                  <td style={{fontWeight:700, color:'var(--primary)'}}>{r.id}</td>
-                  <td style={{fontWeight:600}}>{r.client}</td>
-                  <td className="muted">{r.service}</td>
-                  <td>{statusBadge(r.status)}</td>
-                  <td className="muted">{r.date}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        </div>
-
-        <div style={{display:'flex', flexDirection:'column', gap:18}}>
-          <div className="card">
-            <div style={{display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', padding:'10px 0'}}>
-              <div className="avatar-md" style={{width:80, height:80, fontSize:24}}>{tech.name.split(' ').map(n=>n[0]).join('')}</div>
-              <h3 style={{fontSize:18, marginTop:14}}>{tech.name}</h3>
-              <div className="muted" style={{fontSize:13}}>{tech.spec}</div>
-              <div style={{marginTop:10}}>{statusBadge(tech.status)}</div>
-            </div>
-            <div className="divider"/>
-            <div className="kv"><div className="k">Phone</div><div className="v">{tech.phone}</div></div>
-            <div className="kv"><div className="k">Email</div><div className="v">{tech.email}</div></div>
-            <div className="kv"><div className="k">Region</div><div className="v">{tech.city}</div></div>
-          </div>
-
-          <div className="card">
-            <div className="card-h"><h3>Weekly availability</h3><button className="btn btn-ghost btn-sm"><Icon name="edit" size={12}/>Edit</button></div>
-            <div style={{display:'flex', flexDirection:'column', gap:8}}>
-              {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((d,i) => {
-                const isWork = i < 5;
-                return (
-                  <div key={d} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', borderRadius:8, background: isWork?'var(--accent)':'var(--muted)'}}>
-                    <span style={{fontWeight:600, fontSize:13, color: isWork?'var(--primary)':'var(--muted-foreground)'}}>{d}</span>
-                    <span style={{fontSize:12, color: isWork?'var(--foreground)':'var(--muted-foreground)'}}>{isWork ? '09:00 – 17:00' : 'Unavailable'}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-h"><h3>Service area</h3></div>
-            <div className="kv"><div className="k">Base</div><div className="v">{tech.city}</div></div>
-            <div className="kv" style={{borderBottom:0}}>
-              <div className="k">Service radius</div>
-              <div className="v">{DEFAULT_RADIUS} miles</div>
-            </div>
-            <div style={{position:'relative', height:120, marginTop:10, borderRadius:10, background:'linear-gradient(135deg, var(--accent), transparent)', border:'1px dashed var(--primary)', overflow:'hidden'}}>
-              <div style={{position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center'}}>
-                <Icon name="pin" size={28}/>
+      <div style={{display:'flex', flexDirection:'row', alignItems:'flex-start', gap:0}}>
+        <div style={{flex:1, minWidth:0}}>
+          <div className="detail-grid">
+            <div style={{display:'flex', flexDirection:'column', gap:18}}>
+              <div className="card">
+                <div className="stats" style={{marginBottom:0}}>
+                  <Stat label="Jobs total" value={tech.jobs} icon="clipboard"/>
+                  <Stat label="Completed" value={Math.floor(tech.jobs*0.85)} icon="check" iconColor="green"/>
+                  <Stat label="On time" value="94%" icon="clock"/>
+                </div>
               </div>
-              <div style={{position:'absolute', bottom:8, left:10, fontSize:11, color:'var(--muted-foreground)'}}>250 mi radius</div>
+
+              <div className="card" style={{padding:0, overflow:'hidden'}}>
+                <div style={{display:'flex', alignItems:'center', gap:6, padding:'0 14px', height:46, borderBottom:'1px solid var(--border)', flexShrink:0}}>
+                  <button className="icon-btn" style={{width:28,height:28}} onClick={() => shift(-1)}><Icon name="chevleft" size={14}/></button>
+                  <button className="btn btn-outline btn-sm" onClick={() => setCursor(new Date(2025,10,10))}>Today</button>
+                  <button className="icon-btn" style={{width:28,height:28}} onClick={() => shift(1)}><Icon name="chevright" size={14}/></button>
+                  <span style={{fontSize:13, fontWeight:600, flex:1, marginLeft:4}}>{dayLabel}</span>
+                  {dayKey === TODAY_STR && <span className="badge" style={{fontSize:11, background:'var(--accent)', color:'var(--primary)'}}>Today</span>}
+                </div>
+                <TechDayView dayKey={dayKey} events={dayEvents} blocks={blocks.filter(b => b.date === dayKey)}/>
+              </div>
+
+              <div className="card">
+                <div className="card-h"><h3>Recent jobs</h3></div>
+                <table className="tbl">
+                  <thead><tr><th>ID</th><th>Client</th><th>Service</th><th>Status</th><th>Date</th></tr></thead>
+                  <tbody>{myJobs.slice(0,8).map(r => (
+                    <tr key={r.id} onClick={()=>openDetail(r)}>
+                      <td style={{fontWeight:700, color:'var(--primary)'}}>{r.id}</td>
+                      <td style={{fontWeight:600}}>{r.client}</td>
+                      <td className="muted">{r.service}</td>
+                      <td>{statusBadge(r.status)}</td>
+                      <td className="muted">{r.date}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={{display:'flex', flexDirection:'column', gap:18}}>
+              <div className="card">
+                <div style={{display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', padding:'10px 0'}}>
+                  <div className="avatar-md" style={{width:80, height:80, fontSize:24}}>{tech.name.split(' ').map(n=>n[0]).join('')}</div>
+                  <h3 style={{fontSize:18, marginTop:14}}>{tech.name}</h3>
+                  <div className="muted" style={{fontSize:13}}>{tech.spec}</div>
+                  <div style={{marginTop:10}}>{statusBadge(tech.status)}</div>
+                </div>
+                <div className="divider"/>
+                <div className="kv"><div className="k">Phone</div><div className="v">{tech.phone}</div></div>
+                <div className="kv"><div className="k">Email</div><div className="v">{tech.email}</div></div>
+                <div className="kv"><div className="k">Region</div><div className="v">{tech.city}</div></div>
+              </div>
+
+              <div className="card">
+                <div className="card-h"><h3>Weekly availability</h3></div>
+                <div style={{display:'flex', flexDirection:'column', gap:8}}>
+                  {Object.entries(schedule).map(([dayKey2, d], i) => {
+                    const label = DAY_LABEL[dayKey2];
+                    const fmt12 = t => { if (!t) return ''; const [h,m]=t.split(':').map(Number); const h12=h===0?12:h>12?h-12:h; return `${h12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`; };
+                    return (
+                      <div key={dayKey2} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', borderRadius:8, background: d.enabled?'var(--accent)':'var(--muted)'}}>
+                        <span style={{fontWeight:600, fontSize:13, color: d.enabled?'var(--primary)':'var(--muted-foreground)'}}>{label}</span>
+                        <span style={{fontSize:12, color: d.enabled?'var(--foreground)':'var(--muted-foreground)'}}>
+                          {d.enabled && d.slots.length ? d.slots.map(sl => `${fmt12(sl.start)} – ${fmt12(sl.end)}`).join(', ') : 'Unavailable'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="card-h"><h3>Service area</h3></div>
+                <div className="kv"><div className="k">Base</div><div className="v">{tech.city}</div></div>
+                <div className="kv" style={{borderBottom:0}}>
+                  <div className="k">Service radius</div>
+                  <div className="v">{DEFAULT_RADIUS} miles</div>
+                </div>
+                <div style={{position:'relative', height:120, marginTop:10, borderRadius:10, background:'linear-gradient(135deg, var(--accent), transparent)', border:'1px dashed var(--primary)', overflow:'hidden'}}>
+                  <div style={{position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                    <Icon name="pin" size={28}/>
+                  </div>
+                  <div style={{position:'absolute', bottom:8, left:10, fontSize:11, color:'var(--muted-foreground)'}}>250 mi radius</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        {showAvail && isAdmin && (
+          <AvailSidebar schedule={schedule} setSchedule={setSchedule} blocks={blocks} setBlocks={setBlocks} title={`${tech.name.split(' ')[0]}'s Availability`}/>
+        )}
       </div>
     </div>
   );
@@ -2902,7 +2954,7 @@ const INIT_BLOCKS = [
   {id:'tb2',date:'2025-11-20',allDay:true, start:'09:00',end:'17:00',reason:'Personal day off'},
 ];
 
-const AvailSidebar = ({ schedule, setSchedule, blocks, setBlocks }) => {
+const AvailSidebar = ({ schedule, setSchedule, blocks, setBlocks, title }) => {
   const [editMode,   setEditMode]   = useState(false);
   const [showModal,  setShowModal]  = useState(false);
 
@@ -2935,7 +2987,7 @@ const AvailSidebar = ({ schedule, setSchedule, blocks, setBlocks }) => {
       {/* Header */}
       <div style={{padding:'0 18px',height:46,display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid var(--border)',flexShrink:0}}>
         <span style={{fontSize:14,fontWeight:700,display:'flex',alignItems:'center',gap:8}}>
-          <Icon name="clock" size={15}/>My Availability
+          <Icon name="clock" size={15}/>{title || 'My Availability'}
         </span>
         <button className={`btn btn-sm ${editMode?'btn-primary':'btn-outline'}`}
           onClick={()=>setEditMode(v=>!v)}>
@@ -3089,7 +3141,7 @@ function App() {
   let content = null;
   if (detail) content = <RequestDetail req={detail} onClose={()=>setDetail(null)} onStatusChange={onStatusChange} toast={showToast} role={role}/>;
   else if (cpmDetail) content = <CpmDetail cpm={cpmDetail} onClose={()=>setCpmDetail(null)} toast={showToast} openDetail={setDetail}/>;
-  else if (techDetail) content = <TechDetail tech={techDetail} onClose={()=>setTechDetail(null)} openDetail={setDetail}/>;
+  else if (techDetail) content = <TechDetail tech={techDetail} onClose={()=>setTechDetail(null)} openDetail={setDetail} role={role}/>;
   else if (clientDetail) content = <ClientDetail client={clientDetail} onClose={()=>setClientDetail(null)} openCpm={p=>{setCpmDetail(p);}}/>;
   else if (tenantDetail) content = <TenantDetail tenant={tenantDetail} onClose={()=>setTenantDetail(null)}/>;
   else if (route === 'home') content = <HomeDashboard role={role} go={go}/>;
