@@ -50,6 +50,8 @@ const Icon = ({ name, size=18 }) => {
     file: <><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></>,
     message: <><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></>,
     at: <><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 006 0v-1a10 10 0 10-3.92 7.94"/></>,
+    lock: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>,
+    users: <><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></>,
   };
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
@@ -151,6 +153,72 @@ const REQUESTS = (() => {
   }
   return out;
 })();
+
+/* Dispatcher color palette — used on calendar event cards to distinguish who locked a booking */
+const DISPATCHER_COLORS = {
+  'Olivia Stewart': '#7c3aed',
+  'Carlos Mendez':  '#0891b2',
+  'Aisha Brown':    '#d97706',
+  'Tyler Quinn':    '#db2777',
+  'Sam Whitfield':  '#16a34a',
+};
+
+/* Overlap demo — multiple bookings at identical time slots to show how all three views handle conflicts */
+const OVERLAP_DEMO = [
+  /* Nov 12, 10:00 AM — 4 simultaneous bookings, 3 different dispatchers, all different techs + services */
+  { id:'SR-OV1', client:'Rodriguez Residence',   homeownerName:'Maria Rodriguez', email:'maria.rodriguez@gmail.com',
+    phone:'(512) 555-9001', address:'1210 Bluebonnet Tr, Austin, TX',
+    service:'Solar PV Install', slotMinutes:90, status:'Pending',
+    tech:TECHS[0], cpm:CPMS[0], lockedBy:'Olivia Stewart',
+    date:'2025-11-12', time:'10:00', priority:'High',
+    notes:'Large south-facing roof, excellent exposure.', noteText:'', proposal:null, cancellationReason:null, created:'2025-10-28', photos:2 },
+  { id:'SR-OV2', client:'Park Residence',        homeownerName:'James Park', email:'james.park@gmail.com',
+    phone:'(713) 555-9002', address:'847 Cedar St, Houston, TX',
+    service:'Roof Survey', slotMinutes:60, status:'Completed',
+    tech:TECHS[1], cpm:CPMS[1], lockedBy:'Carlos Mendez',
+    date:'2025-11-12', time:'10:00', priority:'Normal',
+    notes:'Follow-up survey post-install.', noteText:'', proposal:null, cancellationReason:null, created:'2025-10-29', photos:1 },
+  { id:'SR-OV3', client:'Nguyen Residence',      homeownerName:'Linda Nguyen', email:'linda.nguyen@gmail.com',
+    phone:'(214) 555-9003', address:'332 Maple Ave, Dallas, TX',
+    service:'Battery Storage', slotMinutes:120, status:'Pending',
+    tech:TECHS[2], cpm:CPMS[2], lockedBy:null,
+    date:'2025-11-12', time:'10:00', priority:'Normal',
+    notes:'Awaiting dispatcher confirmation.', noteText:'', proposal:null, cancellationReason:null, created:'2025-10-30', photos:0 },
+  { id:'SR-OV4', client:'Foster Residence',      homeownerName:'David Foster', email:'david.foster@gmail.com',
+    phone:'(210) 555-9004', address:'59 Ridgeline Rd, San Antonio, TX',
+    service:'Annual Inspection', slotMinutes:45, status:'Cancelled',
+    tech:TECHS[3], cpm:CPMS[3], lockedBy:'Tyler Quinn',
+    date:'2025-11-12', time:'10:00', priority:'Low',
+    notes:'', noteText:'', proposal:null, cancellationReason:'Homeowner rescheduled', created:'2025-10-31', photos:0 },
+  /* Nov 12, 13:00 PM — 2 overlapping bookings by same dispatcher, different techs */
+  { id:'SR-OV5', client:'Kim Residence',         homeownerName:'Sarah Kim', email:'sarah.kim@gmail.com',
+    phone:'(512) 555-9005', address:'421 Oak Ln, Austin, TX',
+    service:'Permit Walk', slotMinutes:60, status:'Pending',
+    tech:TECHS[4], cpm:CPMS[0], lockedBy:'Olivia Stewart',
+    date:'2025-11-12', time:'13:00', priority:'Normal',
+    notes:'', noteText:'', proposal:null, cancellationReason:null, created:'2025-11-01', photos:0 },
+  { id:'SR-OV6', client:'Torres Residence',      homeownerName:'William Torres', email:'william.torres@gmail.com',
+    phone:'(512) 555-9006', address:'88 Sunset Blvd, Austin, TX',
+    service:'Solar PV Install', slotMinutes:90, status:'Pending',
+    tech:TECHS[0], cpm:CPMS[1], lockedBy:'Carlos Mendez',
+    date:'2025-11-12', time:'13:00', priority:'High',
+    notes:'Second unit same block.', noteText:'', proposal:null, cancellationReason:null, created:'2025-11-01', photos:0 },
+  /* Nov 13 (Thu), 14:00 — overlapping pair to demonstrate week view */
+  { id:'SR-OV7', client:'Hayes Residence',       homeownerName:'Emily Hayes', email:'emily.hayes@gmail.com',
+    phone:'(512) 555-9007', address:'77 Acorn Ct, Austin, TX',
+    service:'Roof Survey', slotMinutes:75, status:'Pending',
+    tech:TECHS[1], cpm:CPMS[0], lockedBy:'Olivia Stewart',
+    date:'2025-11-13', time:'14:00', priority:'Normal',
+    notes:'', noteText:'', proposal:null, cancellationReason:null, created:'2025-11-02', photos:0 },
+  { id:'SR-OV8', client:'Cole Residence',        homeownerName:'Robert Cole', email:'robert.cole@gmail.com',
+    phone:'(214) 555-9008', address:'204 Riverside Dr, Dallas, TX',
+    service:'Battery Storage', slotMinutes:90, status:'Pending',
+    tech:TECHS[2], cpm:CPMS[1], lockedBy:'Carlos Mendez',
+    date:'2025-11-13', time:'14:00', priority:'High',
+    notes:'Requires roof access.', noteText:'', proposal:null, cancellationReason:null, created:'2025-11-02', photos:1 },
+];
+/* Merge demo overlaps into the main request pool */
+REQUESTS.push(...OVERLAP_DEMO);
 
 const TENANTS = [
   { id:'tn1', name:'SunPath Solar Inc.', plan:'Pro', users:48, requests:1240, status:'Active',  joined:'2024-03' },
@@ -740,23 +808,69 @@ const DayColumn = ({ dayKey, events, bufs, blockSlots=[], onOpen, onCreate, isTo
         const c    = EV_COLORS[ev.status]||EV_COLORS.Pending;
         const h    = Math.max(22, (ev.slotMinutes||60)/60*CAL_HOUR_PX - 3);
         const cancelled = ev.status === 'Cancelled';
+        const isLocked  = !!ev.lockedBy;
+        const dispColor = isLocked ? (DISPATCHER_COLORS[ev.lockedBy] || c.bd) : c.bd;
+        const compact   = total >= 3;
+        const techInit  = ev.tech?.name?.split(' ').map(n=>n[0]).join('') || '?';
         return (
           <div key={ev.id} data-ev="1"
             onClick={e=>{e.stopPropagation();onOpen(ev);}}
             style={{position:'absolute',top:timeToY(ev.time)+1,height:h,
-              left:`calc(${pct*col}% + 3px)`,width:`calc(${pct}% - 6px)`,
-              background:c.bg,borderLeft:`2px solid ${c.bd}`,borderRadius:7,
-              padding:'5px 8px',cursor:'pointer',overflow:'hidden',zIndex:2,
-              opacity: cancelled ? .6 : 1}}
-            onMouseEnter={e=>e.currentTarget.style.filter='brightness(0.9)'}
+              left:`calc(${pct*col}% + 2px)`,width:`calc(${pct}% - 4px)`,
+              background: isLocked ? dispColor+'18' : c.bg,
+              borderLeft:`3px solid ${dispColor}`,
+              borderRadius:7,
+              padding: compact ? '3px 5px' : '5px 8px',
+              cursor:'pointer',overflow:'hidden',zIndex:2,boxSizing:'border-box',
+              opacity: cancelled ? .55 : 1,
+              outline: isLocked ? `1px solid ${dispColor}30` : 'none'}}
+            onMouseEnter={e=>e.currentTarget.style.filter='brightness(0.92)'}
             onMouseLeave={e=>e.currentTarget.style.filter=''}
           >
-            <div style={{fontSize:10,fontWeight:600,color:c.fg,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
-              textDecoration:cancelled?'line-through':'none'}}>
-              {ev.time} · {ev.client.split(' ')[0]}
+            {/* Time row + lock icon */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:2}}>
+              <div style={{fontSize:compact?9:10,fontWeight:700,color:isLocked?dispColor:c.fg,
+                whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1,
+                textDecoration:cancelled?'line-through':'none'}}>
+                {ev.time}{!compact && ` · ${ev.client.split(' ')[0]}`}
+              </div>
+              {isLocked && <Icon name="lock" size={compact?8:9} style={{color:dispColor,flexShrink:0,opacity:.8}}/>}
             </div>
-            {h>36 && <div style={{fontSize:10,color:c.fg,opacity:.75,marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ev.service}</div>}
-            {h>52 && <div style={{fontSize:9,color:c.fg,opacity:.55,marginTop:1}}>{ev.tech.name.split(' ')[0]}</div>}
+            {/* Client (compact only) */}
+            {compact && h>28 && <div style={{fontSize:8,color:isLocked?dispColor:c.fg,opacity:.75,
+              whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginTop:1}}>
+              {ev.client.split(' ')[0]}
+            </div>}
+            {/* Service */}
+            {h>36 && <div style={{fontSize:compact?8:9,color:isLocked?dispColor:c.fg,opacity:.7,marginTop:1,
+              whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+              {compact ? ev.service.replace('Solar PV Install','PV Install').replace('Battery Storage','Battery').replace('Annual Inspection','Inspection') : ev.service}
+            </div>}
+            {/* Tech + dispatcher row */}
+            {h>52 && (
+              <div style={{display:'flex',alignItems:'center',gap:3,marginTop:3}}>
+                <div style={{width:compact?12:14,height:compact?12:14,borderRadius:'50%',
+                  background:dispColor,color:'#fff',flexShrink:0,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:compact?6:7,fontWeight:700}}>
+                  {techInit}
+                </div>
+                {!compact && <span style={{fontSize:9,color:c.fg,opacity:.8,overflow:'hidden',
+                  textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {ev.tech.name.split(' ')[0]}
+                </span>}
+              </div>
+            )}
+            {/* Dispatcher tag */}
+            {h>72 && isLocked && !compact && (
+              <div style={{marginTop:3,display:'inline-flex',alignItems:'center',gap:3,
+                background:dispColor+'22',borderRadius:3,padding:'1px 5px'}}>
+                <Icon name="users" size={7} style={{color:dispColor}}/>
+                <span style={{fontSize:8,fontWeight:600,color:dispColor}}>
+                  {ev.lockedBy.split(' ')[0]}
+                </span>
+              </div>
+            )}
           </div>
         );
       })}
@@ -826,17 +940,40 @@ const MonthView = ({ cursor, role, setView, setCursor, openDetail }) => {
               </div>
               {evs.map(ev=>{
                 const c2=EV_COLORS[ev.status]||EV_COLORS.Pending;
+                const isLocked=!!ev.lockedBy;
+                const dispColor=isLocked?(DISPATCHER_COLORS[ev.lockedBy]||c2.bd):c2.bd;
                 return (
                   <div key={ev.id}
                     onClick={e=>{e.stopPropagation();openDetail(ev);}}
                     style={{fontSize:10,fontWeight:500,padding:'2px 5px',borderRadius:4,marginBottom:2,
-                      background:c2.bg,color:c2.fg,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
-                      borderLeft:`2px solid ${c2.bd}`}}>
-                    {ev.time} {ev.client.split(' ')[0]}
+                      background:isLocked?dispColor+'15':c2.bg,
+                      color:isLocked?dispColor:c2.fg,
+                      whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
+                      borderLeft:`2px solid ${dispColor}`,
+                      display:'flex',alignItems:'center',gap:3}}>
+                    {isLocked && <Icon name="lock" size={8}/>}
+                    <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {ev.time} {ev.client.split(' ')[0]}
+                    </span>
                   </div>
                 );
               })}
               {extra>0&&<div style={{fontSize:10,color:'var(--muted-foreground)',paddingLeft:5}}>+{extra} more</div>}
+              {(()=>{
+                const timeCounts={};
+                (byDate[k]||[]).forEach(ev=>{timeCounts[ev.time]=(timeCounts[ev.time]||0)+1;});
+                const overlaps=Object.entries(timeCounts).filter(([,n])=>n>1);
+                if(!overlaps.length) return null;
+                return (
+                  <div style={{display:'flex',alignItems:'center',gap:4,marginTop:2,padding:'2px 4px',
+                    background:'rgba(251,146,60,0.12)',borderRadius:4}}>
+                    <Icon name="alert" size={9} style={{color:'#f97316',flexShrink:0}}/>
+                    <span style={{fontSize:9,fontWeight:600,color:'#f97316'}}>
+                      {overlaps.map(([t,n])=>`${n} at ${t}`).join(', ')}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           );
         })}
@@ -866,12 +1003,19 @@ const WeekView = ({ cursor, role, onOpen, onCreate, blocks=[] }) => {
   return (
     <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
       {/* Day headers */}
-      <div style={{display:'flex',borderBottom:'1px solid var(--border)',paddingLeft:52,height:46,flexShrink:0}}>
+      <div style={{display:'flex',borderBottom:'1px solid var(--border)',paddingLeft:52,height:52,flexShrink:0}}>
         {days.map(d=>{
           const k=d.toISOString().slice(0,10), isT=k===TODAY_STR;
+          const dayEvs=visible.filter(r=>r.date===k);
+          const tc={}; dayEvs.forEach(ev=>{tc[ev.time]=(tc[ev.time]||0)+1;});
+          const hasOverlap=Object.values(tc).some(n=>n>1);
+          const overlapCount=dayEvs.filter(ev=>tc[ev.time]>1).length;
           return (
-            <div key={k} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2,textAlign:'center',borderRight:'1px solid var(--border)'}}>
-              <div style={{fontSize:10,fontWeight:600,color:'var(--muted-foreground)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:2}}>
+            <div key={k} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:1,textAlign:'center',
+              borderRight:'1px solid var(--border)',
+              borderBottom: hasOverlap ? '2px solid #f97316' : '2px solid transparent',
+              background: hasOverlap ? 'rgba(251,146,60,0.05)' : 'transparent'}}>
+              <div style={{fontSize:10,fontWeight:600,color:'var(--muted-foreground)',textTransform:'uppercase',letterSpacing:'.06em'}}>
                 {d.toLocaleString('en',{weekday:'short'})}
               </div>
               <div style={{width:24,height:24,borderRadius:'50%',margin:'0 auto',
@@ -881,6 +1025,11 @@ const WeekView = ({ cursor, role, onOpen, onCreate, blocks=[] }) => {
                 fontSize:12,fontWeight:isT?700:500}}>
                 {d.getDate()}
               </div>
+              {hasOverlap && (
+                <div style={{fontSize:9,fontWeight:600,color:'#f97316',display:'flex',alignItems:'center',gap:2}}>
+                  <Icon name="alert" size={8}/>{overlapCount} overlap
+                </div>
+              )}
             </div>
           );
         })}
@@ -912,7 +1061,10 @@ const DayView = ({ cursor, role, onOpen, onCreate, blocks=[] }) => {
     {id:`bb${ev.id}`,time:minToTime(Math.max(CAL_START*60,timeToMin(ev.time)-30)),slotMinutes:30},
     {id:`ba${ev.id}`,time:addMinutes(ev.time,ev.slotMinutes||60),slotMinutes:30},
   ]):[];
-  const hasConflict=evs.length>1&&cursor.getDate()%4===0;
+  const timeCounts={};
+  evs.forEach(ev=>{timeCounts[ev.time]=(timeCounts[ev.time]||0)+1;});
+  const conflictSlots=Object.entries(timeCounts).filter(([,n])=>n>1);
+  const hasConflict=conflictSlots.length>0;
   return (
     <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
       {/* Day header */}
@@ -935,7 +1087,10 @@ const DayView = ({ cursor, role, onOpen, onCreate, blocks=[] }) => {
       {hasConflict&&(
         <div className="banner warn" style={{margin:'0',flexShrink:0}}>
           <Icon name="alert" size={15}/>
-          <div><strong>Scheduling conflict</strong> — two jobs overlap at 13:00. <a href="#" style={{color:'inherit',fontWeight:600}}>Reassign →</a></div>
+          <div>
+            <strong>Simultaneous bookings</strong> — {conflictSlots.map(([t,n])=>`${n} bookings at ${t}`).join(' · ')}.
+            {' '}<span style={{opacity:.7}}>Columns show each booking side-by-side. Click any to reassign tech.</span>
+          </div>
         </div>
       )}
       <div ref={scrollRef} style={{display:'flex',overflowY:'auto',height:'calc(100vh - 172px)'}}>
@@ -985,6 +1140,18 @@ const Calendar = ({ role, go, openDetail, onAdd }) => {
         </div>
         <h2 style={{fontSize:17,fontWeight:700,margin:'0 4px'}}>{label}</h2>
         <span style={{flex:1}}/>
+        {/* Dispatcher legend — visible to admin/super_admin in all views */}
+        {(role.key==='admin'||role.key==='super_admin') && (
+          <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 10px',background:'var(--accent)',borderRadius:8,flexShrink:0}}>
+            <Icon name="lock" size={10} style={{color:'var(--muted-foreground)'}}/>
+            {Object.entries(DISPATCHER_COLORS).map(([name,color])=>(
+              <div key={name} title={name} style={{display:'flex',alignItems:'center',gap:3}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:color,flexShrink:0}}/>
+                <span style={{fontSize:10,color:'var(--muted-foreground)',whiteSpace:'nowrap'}}>{name.split(' ')[0]}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {role.key==='tech' && (
           <button className={`btn btn-sm ${showAvail?'btn-primary':'btn-outline'}`}
             onClick={()=>setShowAvail(v=>!v)}>
